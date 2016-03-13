@@ -1,0 +1,8 @@
+#!/bin/sh
+
+mkdir build-aux m4
+aclocal
+autoheader
+autoconf
+automake --add-missing --copy
+
