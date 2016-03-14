@@ -46,6 +46,7 @@ path:
  |'/' IDENT attributes
     { struct NavExpr * expr = malloc(sizeof *expr);
       expr->name = $2;
+      expr->attributes = $3;
       expr->subExpr = NULL;
       $$ = expr;
     }

@@ -60,49 +60,70 @@ int main(int argc, char * argv[])
 
 static void printPath(const void * fdt, off_t offset);
 
-static off_t getSubNode(const void * fdt, off_t offset, int depth,
+static bool testTest(const void * fdt, off_t offset,
+	const struct TestExpr * test)
+{
+	const struct fdt_property * prop = fdt_get_property(fdt, offset,
+		test->property, NULL);
+	if (!prop)
+		return false;
+	switch(test->type) {
+	case TEST_TYPE_EXIST:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static bool testAttributes(const void * fdt, off_t offset,
+	const struct AttrExpr * attr)
+{
+	switch(attr->type) {
+	case ATTR_TYPE_AND:
+		return testAttributes(fdt, offset, attr->left) &&
+			testAttributes(fdt, offset, attr->right);
+	case ATTR_TYPE_OR:
+		return testAttributes(fdt, offset, attr->left) ||
+			testAttributes(fdt, offset, attr->right);
+	case ATTR_TYPE_NEG:
+		return !testAttributes(fdt, offset, attr->neg);
+	case ATTR_TYPE_TEST:
+		return testTest(fdt, offset, attr->test);
+	default:
+		return false;
+	}
+}
+
+static void evaluate(const void * fdt, off_t offset, int depth,
 	const struct NavExpr * expr)
 {
 	int cdepth = depth;
 
-	do {
+	while (true) {
 		offset = fdt_next_node(fdt, offset, &cdepth);
-
-		if (cdepth == depth + 1) {
+		if (cdepth == 0)
+			break;
+		if (cdepth != depth + 1)
+			continue;
+		if (expr->name) {
 			const char * name = fdt_get_name(fdt, offset, NULL);
-			printf("%s <> %s\n", expr->name, name);
-			if (!strcmp(expr->name, name))
-				return offset;
+			//printf("%s <> %s\n", expr->name, name);
+			if (strcmp(expr->name, name))
+				continue;
 		}
-	} while (cdepth >= 0);
-
-	return -FDT_ERR_NOTFOUND;
-}
-
-static off_t getNode(const void * fdt, off_t offset, int depth,
-	const struct NavExpr * expr, off_t * lastNode)
-{
-	offset = getSubNode(fdt, offset, depth, expr);
-	if (offset == -FDT_ERR_NOTFOUND)
-		return offset;
-	*lastNode = offset;
-	if (expr->subExpr)
-		offset = getNode(fdt, offset, depth + 1, expr->subExpr, lastNode);
-	return offset;
+		if (expr->attributes && !testAttributes(fdt, offset, expr->attributes))
+			continue;
+		if (expr->subExpr) {
+			evaluate(fdt, offset, cdepth, expr->subExpr);
+		} else {
+			printPath(fdt, offset);
+		}
+	}
 }
 
 static void queryFdt(const void * fdt, const struct NavExpr * expr)
 {
-	/* start at root node */
-	off_t lastNode = 0;
-
-	int off2 = getNode(fdt, 0, 0, expr, &lastNode);
-
-	if (off2 == -FDT_ERR_NOTFOUND) {
-		printf("Not found after "); printPath(fdt, lastNode);
-	} else {
-		printPath(fdt, off2);
-	}
+	evaluate(fdt, 0, 0, expr);
 }
 
 static void printPath(const void * fdt, off_t offset)
