@@ -10,6 +10,7 @@
 \<=               { return LE; }
 >=                { return GE; }
 !=                { return NE; }
+~=                { return CONTAINS; }
 
 0[0-7]+           { yylval.number = strtoull(yytext, NULL, 8); return NUMBER; }
 

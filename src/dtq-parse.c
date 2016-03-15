@@ -100,36 +100,24 @@ void freeNavExpr(struct NavExpr * expr)
 }
 
 static const char * testOperators[] = {
-	[TEST_TYPE_STR_EQ] = "=",
-	[TEST_TYPE_STR_NE] = "!=",
-	[TEST_TYPE_INT_EQ] = "=",
-	[TEST_TYPE_INT_NE] = "!=",
-	[TEST_TYPE_INT_LT] = "<",
-	[TEST_TYPE_INT_GT] = ">",
-	[TEST_TYPE_INT_LE] = "<=",
-	[TEST_TYPE_INT_GE] = ">=",
+	[TEST_TYPE_EQ] = "=",
+	[TEST_TYPE_NE] = "!=",
+	[TEST_TYPE_LT] = "<",
+	[TEST_TYPE_GT] = ">",
+	[TEST_TYPE_LE] = "<=",
+	[TEST_TYPE_GE] = ">=",
+	[TEST_TYPE_CONTAINS] = "~="
 };
 
 static void printTest(const struct TestExpr * test)
 {
-	switch(test->type) {
-	case TEST_TYPE_EXIST:
+	const char * op = testOperators[test->type & TEST_TYPE_MASK];
+	if (test->type == TEST_TYPE_EXIST) {
 		printf("%s", test->property);
-		break;
-	case TEST_TYPE_STR_EQ:
-	case TEST_TYPE_STR_NE:
-		printf("%s %s \"%s\"", test->property, testOperators[test->type],
-			test->string);
-		break;
-	case TEST_TYPE_INT_EQ:
-	case TEST_TYPE_INT_NE:
-	case TEST_TYPE_INT_LT:
-	case TEST_TYPE_INT_GT:
-	case TEST_TYPE_INT_LE:
-	case TEST_TYPE_INT_GE:
-		printf("%s %s 0x%x", test->property, testOperators[test->type],
-			test->integer);
-		break;
+	} else if (test->type & TEST_TYPE_STR) {
+		printf("%s %s \"%s\"", test->property, op, test->string);
+	} else {
+		printf("%s %s 0x%x", test->property, op, test->integer);
 	}
 }
 

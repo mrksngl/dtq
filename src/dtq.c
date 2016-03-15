@@ -60,22 +60,33 @@ int main(int argc, char * argv[])
 
 static void printPath(const void * fdt, off_t offset);
 
-static bool getInt(const struct fdt_property * prop, uint64_t * n)
+static bool getInt(const void * data, int len, uint64_t * n)
 {
-	int len = fdt32_to_cpu(prop->len);
 	switch (len) {
 	case 2:
-		*n = fdt16_to_cpu(*(fdt16_t*)prop->data);
+		*n = fdt16_to_cpu(*(fdt16_t*)data);
 		return true;
 	case 4:
-		*n = fdt32_to_cpu(*(fdt32_t*)prop->data);
+		*n = fdt32_to_cpu(*(fdt32_t*)data);
 		return true;
 	case 8:
-		*n = fdt64_to_cpu(*(fdt64_t*)prop->data);
+		*n = fdt64_to_cpu(*(fdt64_t*)data);
 		return true;
 	default:
 		return false;
 	}
+}
+
+static bool contains(const char * data, int len, const char * str)
+{
+	const char * end = data + len;
+
+	do {
+		if (!strcmp(data, str))
+			return true;
+		data += strlen(data) + 1;
+	} while (data < end);
+	return false;
 }
 
 static bool testTest(const void * fdt, off_t offset,
@@ -91,11 +102,16 @@ static bool testTest(const void * fdt, off_t offset,
 		return true;
 
 	if (test->type & TEST_TYPE_STR) {
-		bool res = !!strncmp(test->string, prop->data, len);
-		return !!(res ^ ((test->type & TEST_TYPE_MASK) == TEST_TYPE_EQ));
+		if ((test->type & TEST_TYPE_MASK) == TEST_TYPE_CONTAINS) {
+			return contains(prop->data, len, test->string);
+		} else {
+			bool res = len == strlen(test->string) + 1;
+			res = res && !memcmp(test->string, prop->data, len);
+			return !(res ^ ((test->type & TEST_TYPE_MASK) == TEST_TYPE_EQ));
+		}
 	} else {
 		uint64_t i;
-		if (!getInt(prop, &i))
+		if (!getInt(prop->data, len, &i))
 			return false;
 		switch (test->type & TEST_TYPE_MASK) {
 		case TEST_TYPE_EQ: return i == test->integer;

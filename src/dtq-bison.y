@@ -25,7 +25,7 @@ extern struct NavExpr * parsedExpression;
 
 %token <number> NUMBER
 %token <text> IDENT STRING
-%token LE GE NE
+%token LE GE NE CONTAINS
 
 %left '|'
 %left '&'
@@ -89,6 +89,8 @@ test:
   IDENT { $$ = newTestExprString(TEST_TYPE_EXIST, $1, NULL); }
  |IDENT '=' STRING { $$ = newTestExprString(TEST_TYPE_STR_EQ, $1, $3); }
  |IDENT NE STRING { $$ = newTestExprString(TEST_TYPE_STR_NE, $1, $3); }
+ |IDENT CONTAINS STRING { $$ = newTestExprString(TEST_TYPE_STR_CONTAINS, 
+                          $1, $3); }
  |IDENT '=' NUMBER { $$ = newTestExprInteger(TEST_TYPE_INT_EQ, $1, $3); }
  |IDENT '>' NUMBER { $$ = newTestExprInteger(TEST_TYPE_INT_GT, $1, $3); }
  |IDENT '<' NUMBER { $$ = newTestExprInteger(TEST_TYPE_INT_LT, $1, $3); }
