@@ -60,24 +60,7 @@ int main(int argc, char * argv[])
 
 static void printPath(const void * fdt, off_t offset);
 
-static bool getInt(const void * data, int len, uint64_t * n)
-{
-	switch (len) {
-	case 2:
-		*n = fdt16_to_cpu(*(fdt16_t*)data);
-		return true;
-	case 4:
-		*n = fdt32_to_cpu(*(fdt32_t*)data);
-		return true;
-	case 8:
-		*n = fdt64_to_cpu(*(fdt64_t*)data);
-		return true;
-	default:
-		return false;
-	}
-}
-
-static bool contains(const char * data, int len, const char * str)
+static bool containsString(const char * data, int len, const char * str)
 {
 	const char * end = data + len;
 
@@ -86,6 +69,18 @@ static bool contains(const char * data, int len, const char * str)
 			return true;
 		data += strlen(data) + 1;
 	} while (data < end);
+	return false;
+}
+
+static bool containsInt(const char * data, int len, uint32_t i)
+{
+	const char * end = data + len;
+
+	while (data + 3 < end) {
+		if (fdt32_to_cpu(*(fdt32_t*)data) == i)
+			return true;
+		data += 4;
+	}
 	return false;
 }
 
@@ -101,26 +96,33 @@ static bool testTest(const void * fdt, off_t offset,
 	if (test->type == TEST_TYPE_EXIST)
 		return true;
 
+	enum TEST_TYPE operator = test->type & TEST_TYPE_MASK;
+
 	if (test->type & TEST_TYPE_STR) {
-		if ((test->type & TEST_TYPE_MASK) == TEST_TYPE_CONTAINS) {
-			return contains(prop->data, len, test->string);
+		if (operator == TEST_TYPE_CONTAINS) {
+			return containsString(prop->data, len, test->string);
 		} else {
 			bool res = len == strlen(test->string) + 1;
 			res = res && !memcmp(test->string, prop->data, len);
-			return !(res ^ ((test->type & TEST_TYPE_MASK) == TEST_TYPE_EQ));
+			return !(res ^ (operator == TEST_TYPE_EQ));
 		}
 	} else {
-		uint64_t i;
-		if (!getInt(prop->data, len, &i))
-			return false;
-		switch (test->type & TEST_TYPE_MASK) {
-		case TEST_TYPE_EQ: return i == test->integer;
-		case TEST_TYPE_NE: return i != test->integer;
-		case TEST_TYPE_LE: return i < test->integer;
-		case TEST_TYPE_GE: return i > test->integer;
-		case TEST_TYPE_LT: return i <= test->integer;
-		case TEST_TYPE_GT: return i >= test->integer;
-		default: return false;
+		if (operator == TEST_TYPE_CONTAINS) {
+			return containsInt(prop->data, len, test->integer);
+		} else {
+			if (len != 4)
+				return false;
+			uint32_t i = fdt32_to_cpu(*(fdt32_t*)prop->data);
+
+			switch (test->type & TEST_TYPE_MASK) {
+			case TEST_TYPE_EQ: return i == test->integer;
+			case TEST_TYPE_NE: return i != test->integer;
+			case TEST_TYPE_LE: return i < test->integer;
+			case TEST_TYPE_GE: return i > test->integer;
+			case TEST_TYPE_LT: return i <= test->integer;
+			case TEST_TYPE_GT: return i >= test->integer;
+			default: return false;
+			}
 		}
 	}
 }

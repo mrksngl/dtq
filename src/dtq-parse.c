@@ -21,23 +21,23 @@ struct NavExpr * parseNavExpr(const char * expr)
     return parsedExpression;
 }
 
-struct TestExpr * newTestExprString(enum TEST_TYPE type, char * property,
+struct TestExpr * newTestExprString(enum TEST_TYPE op, char * property,
 	char * string)
 {
 	struct TestExpr * expr = malloc(sizeof *expr);
 	assert(expr);
-	expr->type = type;
+	expr->type = op | TEST_TYPE_STR;
 	expr->property = property;
 	expr->string = string;
 	return expr;
 }
 
-struct TestExpr * newTestExprInteger(enum TEST_TYPE type, char * property,
+struct TestExpr * newTestExprInteger(enum TEST_TYPE op, char * property,
 	int integer)
 {
 	struct TestExpr * expr = malloc(sizeof *expr);
 	assert(expr);
-	expr->type = type;
+	expr->type = op | TEST_TYPE_INT;
 	expr->property = property;
 	expr->integer = integer;
 	return expr;
@@ -48,14 +48,8 @@ static void freeTest(struct TestExpr * expr)
 	if (!expr)
 		return;
 
-	switch(expr->type) {
-	case TEST_TYPE_STR_EQ:
-	case TEST_TYPE_STR_NE:
+	if (expr->type & TEST_TYPE_STR)
 		free(expr->string);
-		break;
-	default:
-		break;
-	}
 	free(expr->property);
 	free(expr);
 }

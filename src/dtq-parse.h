@@ -46,17 +46,6 @@ enum TEST_TYPE {
 
 	TEST_TYPE_INT = 0,
 	TEST_TYPE_STR = 8,
-
-	TEST_TYPE_STR_EQ = TEST_TYPE_STR | TEST_TYPE_EQ,
-	TEST_TYPE_STR_NE = TEST_TYPE_STR | TEST_TYPE_NE,
-	TEST_TYPE_STR_CONTAINS = TEST_TYPE_STR | TEST_TYPE_CONTAINS,
-
-	TEST_TYPE_INT_EQ = TEST_TYPE_INT | TEST_TYPE_EQ,
-	TEST_TYPE_INT_NE = TEST_TYPE_INT | TEST_TYPE_NE,
-	TEST_TYPE_INT_LE = TEST_TYPE_INT | TEST_TYPE_LE,
-	TEST_TYPE_INT_GE = TEST_TYPE_INT | TEST_TYPE_GE,
-	TEST_TYPE_INT_LT = TEST_TYPE_INT | TEST_TYPE_LT,
-	TEST_TYPE_INT_GT = TEST_TYPE_INT | TEST_TYPE_GT,
 };
 
 struct TestExpr {
@@ -64,14 +53,14 @@ struct TestExpr {
 	char * property;
 	union {
 		char * string;
-		uint64_t integer;
+		uint32_t integer;
 	};
 };
 
-struct TestExpr * newTestExprString(enum TEST_TYPE type, char * property,
+struct TestExpr * newTestExprString(enum TEST_TYPE op, char * property,
 	char * string);
 
-struct TestExpr * newTestExprInteger(enum TEST_TYPE type, char * property,
+struct TestExpr * newTestExprInteger(enum TEST_TYPE op, char * property,
 	int integer);
 
 struct NavExpr * parseNavExpr(const char * expr);
