@@ -1,6 +1,8 @@
 #ifndef _DTQ_H
 #define _DTQ_H
 
+#include <stdint.h>
+
 struct AttrExpr;
 struct TestExpr;
 
@@ -30,15 +32,28 @@ struct AttrExpr {
 };
 
 enum TEST_TYPE {
-	TEST_TYPE_EXIST,
-	TEST_TYPE_STR_EQ,
-	TEST_TYPE_STR_NE,
-	TEST_TYPE_INT_EQ,
-	TEST_TYPE_INT_NE,
-	TEST_TYPE_INT_LE,
-	TEST_TYPE_INT_GE,
-	TEST_TYPE_INT_LT,
-	TEST_TYPE_INT_GT,
+	TEST_TYPE_EXIST = 0,
+
+	TEST_TYPE_EQ = 1,
+	TEST_TYPE_NE = 2,
+	TEST_TYPE_LE = 3,
+	TEST_TYPE_GE = 4,
+	TEST_TYPE_LT = 5,
+	TEST_TYPE_GT = 6,
+
+	TEST_TYPE_MASK = 7,
+
+	TEST_TYPE_INT = 0,
+	TEST_TYPE_STR = 8,
+
+	TEST_TYPE_STR_EQ = TEST_TYPE_STR | TEST_TYPE_EQ,
+	TEST_TYPE_STR_NE = TEST_TYPE_STR | TEST_TYPE_NE,
+	TEST_TYPE_INT_EQ = TEST_TYPE_INT | TEST_TYPE_EQ,
+	TEST_TYPE_INT_NE = TEST_TYPE_INT | TEST_TYPE_NE,
+	TEST_TYPE_INT_LE = TEST_TYPE_INT | TEST_TYPE_LE,
+	TEST_TYPE_INT_GE = TEST_TYPE_INT | TEST_TYPE_GE,
+	TEST_TYPE_INT_LT = TEST_TYPE_INT | TEST_TYPE_LT,
+	TEST_TYPE_INT_GT = TEST_TYPE_INT | TEST_TYPE_GT,
 };
 
 struct TestExpr {
@@ -46,7 +61,7 @@ struct TestExpr {
 	char * property;
 	union {
 		char * string;
-		int integer;
+		uint64_t integer;
 	};
 };
 

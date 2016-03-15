@@ -11,7 +11,7 @@ extern struct NavExpr * parsedExpression;
 %}
 
 %union {
-  int number;
+  uint64_t number;
   char * text;
   struct NavExpr * navExpr;
   struct AttrExpr * attrExpr;
