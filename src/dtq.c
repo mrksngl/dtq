@@ -155,14 +155,15 @@ static void evaluate(const void * fdt, off_t offset, int depth,
 		offset = fdt_next_node(fdt, offset, &cdepth);
 		if (cdepth == 0)
 			break;
-		if (cdepth != depth + 1)
-			continue;
 		if (expr->name) {
+			if (cdepth != depth + 1)
+				continue;
 			const char * name = fdt_get_name(fdt, offset, NULL);
 			//printf("%s <> %s\n", expr->name, name);
 			if (strcmp(expr->name, name))
 				continue;
-		}
+		} else if (cdepth <= depth)
+			continue;
 		if (expr->attributes && !testAttributes(fdt, offset, expr->attributes))
 			continue;
 		if (expr->subExpr) {

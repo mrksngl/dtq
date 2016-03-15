@@ -50,6 +50,20 @@ path:
       expr->subExpr = NULL;
       $$ = expr;
     }
+ |'/' attributes path
+    { struct NavExpr * expr = malloc(sizeof *expr);
+      expr->name = NULL;
+      expr->attributes = $2;
+      expr->subExpr = $3;
+      $$ = expr;
+    }
+ |'/' attributes
+    { struct NavExpr * expr = malloc(sizeof *expr);
+      expr->name = NULL;
+      expr->attributes = $2;
+      expr->subExpr = NULL;
+      $$ = expr;
+    }
  ;
 
 attributes: '[' attributeExpr ']' { $$ = $2; } | { $$ = NULL; };
