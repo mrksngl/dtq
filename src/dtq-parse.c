@@ -16,10 +16,10 @@ struct NavExpr * parsedExpression;
 
 struct NavExpr * parseNavExpr(const char * expr)
 {
-    YY_BUFFER_STATE buffer = yy_scan_string(expr);
-    yyparse();
-    yy_delete_buffer(buffer);
-    return parsedExpression;
+	YY_BUFFER_STATE buffer = yy_scan_string(expr);
+	int ret = yyparse();
+	yy_delete_buffer(buffer);
+	return parsedExpression;
 }
 
 struct TestExpr * newTestExprExist(char * property)

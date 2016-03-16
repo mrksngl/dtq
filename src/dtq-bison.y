@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <dtq-parse.h>
 
+extern int yylex();
+
 void yyerror(char *s) {
   fprintf(stderr, "%s\n", s);
 }
