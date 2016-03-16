@@ -85,8 +85,7 @@ test:
  |IDENT NE STRING { $$ = newTestExprString(TEST_OP_NE, $1, $3); }
  |IDENT CONTAINS STRING { $$ = newTestExprString(TEST_OP_CONTAINS, $1, $3); }
  |IDENT '=' NUMBER { $$ = newTestExprInteger(TEST_OP_EQ, $1, $3); }
- |IDENT CONTAINS NUMBER { $$ = newTestExprInteger(TEST_OP_CONTAINS, 
-                          $1, $3); }
+ |IDENT CONTAINS NUMBER { $$ = newTestExprInteger(TEST_OP_CONTAINS, $1, $3); }
  |IDENT '>' NUMBER { $$ = newTestExprInteger(TEST_OP_GT, $1, $3); }
  |IDENT '<' NUMBER { $$ = newTestExprInteger(TEST_OP_LT, $1, $3); }
  |IDENT NE NUMBER { $$ = newTestExprInteger(TEST_OP_NE, $1, $3); }
