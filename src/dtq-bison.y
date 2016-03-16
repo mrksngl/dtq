@@ -5,7 +5,8 @@
 extern int yylex();
 %}
 
-%parse-param {struct NavExpr ** parsedExpression}
+%parse-param {struct NavExpr ** parsedExpression} {const char * unparsedExpression}
+%locations
 
 %union {
   uint64_t number;

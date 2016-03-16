@@ -1,11 +1,11 @@
 
 #include <dtq-parse.h>
+#include <dtq-bison.h>
 #include <stdlib.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <stdio.h>
-
-int yyparse(struct NavExpr ** parsedExpression);
+#include <string.h>
 
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
 extern int yyparse();
@@ -17,7 +17,7 @@ struct NavExpr * parseNavExpr(const char * expr)
 	struct NavExpr * parsedExpression;
 
 	YY_BUFFER_STATE buffer = yy_scan_string(expr);
-	int ret = yyparse(&parsedExpression);
+	int ret = yyparse(&parsedExpression, expr);
 	yy_delete_buffer(buffer);
 
 	if (ret) {
@@ -32,9 +32,50 @@ void lexError(const char * yytext)
 	printf("Lex Error: %s\n", yytext);
 }
 
-void yyerror(struct NavExpr ** parsedExpression, const char * s)
+void yyerror(struct NavExpr ** parsedExpression, const char * expr, const char * s)
 {
-	printf("Parser Error: %s\n", s);
+	const char * err = expr;
+	size_t errlen = yylloc.last_column - yylloc.first_column + 1;
+
+	size_t offset = yylloc.first_column - 1;
+	size_t printLen = strlen(expr);
+	bool truncate_l = false;
+	bool truncate_r = false;
+	if (printLen > 60) {
+		if (offset >= 10) {
+			err += offset - 5;
+			printLen -= offset - 5;
+			offset = 5;
+			truncate_l = true;
+		}
+		if (printLen - errlen >= 10) {
+			printLen = errlen + 5;
+			truncate_r = true;
+		}
+	}
+
+	offset += printf("%s at ", s);
+	if (truncate_l) {
+		offset += 1;
+		printf("…");
+	}
+	printf("%.*s", (int)printLen, err);
+	if (truncate_r)
+		printf("…");
+	printf("\n");
+
+	const char spc[10] = { [0 ... 9] = ' ' };
+	for (; offset >= 10; offset -= 10)
+		fwrite(spc, sizeof *spc, sizeof spc, stdout);
+	if (offset)
+		fwrite(spc, sizeof *spc, offset, stdout);
+
+	const char mark[10] = { [0 ... 9] = '^' };
+	for (; errlen >= 10; errlen -= 10)
+		fwrite(mark, sizeof *mark, sizeof mark, stdout);
+	if (errlen)
+		fwrite(mark, sizeof *mark, errlen, stdout);
+	puts("");
 }
 
 struct NavExpr * newNavExpr(char * name, struct AttrExpr * attr,

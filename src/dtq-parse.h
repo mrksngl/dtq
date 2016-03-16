@@ -59,7 +59,7 @@ struct TestExpr {
 
 void lexError(const char * yytext);
 
-void yyerror(struct NavExpr ** parsedExpression, const char * s);
+void yyerror(struct NavExpr ** parsedExpression, const char * expr, const char * s);
 
 struct NavExpr * newNavExpr(char * name, struct AttrExpr * attr,
 	struct NavExpr * subExpr);
