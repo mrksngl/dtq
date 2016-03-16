@@ -152,30 +152,69 @@ static bool testAttributes(const void * fdt, off_t offset,
 	}
 }
 
+#ifndef HAVE_FDT_FIRST_SUBNODE
+int fdt_first_subnode(const void *fdt, int offset)
+{
+	int depth = 0;
+
+	offset = fdt_next_node(fdt, offset, &depth);
+	if (offset < 0 || depth != 1)
+		return -FDT_ERR_NOTFOUND;
+
+	return offset;
+}
+#endif
+
+#ifndef HAVE_FDT_NEXT_SUBNODE
+int fdt_next_subnode(const void *fdt, int offset)
+{
+	int depth = 1;
+
+	/*
+	 * With respect to the parent, the depth of the next subnode will be
+	 * the same as the last.
+	 */
+	do {
+		offset = fdt_next_node(fdt, offset, &depth);
+		if (offset < 0 || depth < 1)
+			return -FDT_ERR_NOTFOUND;
+	} while (depth > 1);
+
+	return offset;
+}
+#endif
+
+static void evaluate(const void * fdt, off_t offset, int depth,
+	const struct NavExpr * expr);
+
+static void evaluateNode(const void * fdt, off_t offset, int depth,
+	const struct NavExpr * expr)
+{
+	if (expr->attributes && !testAttributes(fdt, offset, expr->attributes))
+		return;
+	if (expr->subExpr)
+		evaluate(fdt, offset, depth, expr->subExpr);
+	else
+		printPath(fdt, offset);
+}
+
 static void evaluate(const void * fdt, off_t offset, int depth,
 	const struct NavExpr * expr)
 {
-	int cdepth = depth;
-
-	while (true) {
-		offset = fdt_next_node(fdt, offset, &cdepth);
-		if (cdepth == 0)
-			break;
-		if (expr->name) {
-			if (cdepth != depth + 1)
-				continue;
-			const char * name = fdt_get_name(fdt, offset, NULL);
-			//printf("%s <> %s\n", expr->name, name);
-			if (strcmp(expr->name, name))
-				continue;
-		} else if (cdepth <= depth)
-			continue;
-		if (expr->attributes && !testAttributes(fdt, offset, expr->attributes))
-			continue;
-		if (expr->subExpr) {
-			evaluate(fdt, offset, cdepth, expr->subExpr);
-		} else {
-			printPath(fdt, offset);
+	if (expr->name) {
+		offset = fdt_first_subnode(fdt, offset);
+		while (offset != FDT_ERR_NOTFOUND) {
+			if (!strcmp(expr->name, fdt_get_name(fdt, offset, NULL)))
+				evaluateNode(fdt, offset, depth + 1, expr);
+			offset = fdt_next_subnode(fdt, offset);
+		}
+	} else {
+		while (true) {
+			int cdepth = 0;
+			offset = fdt_next_node(fdt, offset, &cdepth);
+			if (cdepth <= 0)
+				return;
+			evaluateNode(fdt, offset, depth + cdepth, expr);
 		}
 	}
 }

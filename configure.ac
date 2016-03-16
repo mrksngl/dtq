@@ -19,5 +19,7 @@ AC_PROG_MAKE_SET
 
 AC_CHECK_LIB([fdt], [fdt_get_path],,AC_MSG_ERROR([libftd not found]))
 
+AC_CHECK_FUNCS_ONCE([fdt_first_subnode fdt_next_subnode])
+
 dnl output directive
 AC_OUTPUT(Makefile src/Makefile)
