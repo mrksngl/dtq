@@ -29,6 +29,11 @@ extern struct NavExpr * parsedExpression;
 %token <text> IDENT STRING
 %token LE GE NE CONTAINS
 
+%destructor { freeNavExpr($$); } <navExpr>
+%destructor { freeAttributes($$); } <attrExpr>
+%destructor { freeTest($$); } <testExpr>
+
+
 %left '|'
 %left '&'
 %left '!'

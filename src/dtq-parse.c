@@ -19,6 +19,9 @@ struct NavExpr * parseNavExpr(const char * expr)
 	YY_BUFFER_STATE buffer = yy_scan_string(expr);
 	int ret = yyparse();
 	yy_delete_buffer(buffer);
+
+	//if (ret)
+
 	return parsedExpression;
 }
 
@@ -55,7 +58,7 @@ struct TestExpr * newTestExprInteger(enum TEST_OP op, char * property,
 	return expr;
 }
 
-static void freeTest(struct TestExpr * expr)
+void freeTest(struct TestExpr * expr)
 {
 	if (!expr)
 		return;

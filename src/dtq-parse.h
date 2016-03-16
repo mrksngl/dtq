@@ -69,6 +69,10 @@ struct NavExpr * parseNavExpr(const char * expr);
 
 void freeNavExpr(struct NavExpr * expr);
 
+void freeTest(struct TestExpr * expr);
+
+void freeAttributes(struct AttrExpr * expr);
+
 void printNavExpr(const struct NavExpr * expr);
 
 #endif
