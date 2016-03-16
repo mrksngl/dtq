@@ -100,16 +100,16 @@ attributeExpr:
  ;
 
 test:
-  IDENT { $$ = newTestExprInteger(TEST_TYPE_EXIST, $1, 0); }
- |IDENT '=' STRING { $$ = newTestExprString(TEST_TYPE_EQ, $1, $3); }
- |IDENT NE STRING { $$ = newTestExprString(TEST_TYPE_NE, $1, $3); }
- |IDENT CONTAINS STRING { $$ = newTestExprString(TEST_TYPE_CONTAINS, $1, $3); }
- |IDENT '=' NUMBER { $$ = newTestExprInteger(TEST_TYPE_EQ, $1, $3); }
- |IDENT CONTAINS NUMBER { $$ = newTestExprInteger(TEST_TYPE_CONTAINS, 
+  IDENT { $$ = newTestExprExist($1); }
+ |IDENT '=' STRING { $$ = newTestExprString(TEST_OP_EQ, $1, $3); }
+ |IDENT NE STRING { $$ = newTestExprString(TEST_OP_NE, $1, $3); }
+ |IDENT CONTAINS STRING { $$ = newTestExprString(TEST_OP_CONTAINS, $1, $3); }
+ |IDENT '=' NUMBER { $$ = newTestExprInteger(TEST_OP_EQ, $1, $3); }
+ |IDENT CONTAINS NUMBER { $$ = newTestExprInteger(TEST_OP_CONTAINS, 
                           $1, $3); }
- |IDENT '>' NUMBER { $$ = newTestExprInteger(TEST_TYPE_GT, $1, $3); }
- |IDENT '<' NUMBER { $$ = newTestExprInteger(TEST_TYPE_LT, $1, $3); }
- |IDENT NE NUMBER { $$ = newTestExprInteger(TEST_TYPE_NE, $1, $3); }
- |IDENT LE NUMBER { $$ = newTestExprInteger(TEST_TYPE_LE, $1, $3); }
- |IDENT GE NUMBER { $$ = newTestExprInteger(TEST_TYPE_GE, $1, $3); }
+ |IDENT '>' NUMBER { $$ = newTestExprInteger(TEST_OP_GT, $1, $3); }
+ |IDENT '<' NUMBER { $$ = newTestExprInteger(TEST_OP_LT, $1, $3); }
+ |IDENT NE NUMBER { $$ = newTestExprInteger(TEST_OP_NE, $1, $3); }
+ |IDENT LE NUMBER { $$ = newTestExprInteger(TEST_OP_LE, $1, $3); }
+ |IDENT GE NUMBER { $$ = newTestExprInteger(TEST_OP_GE, $1, $3); }
  ;

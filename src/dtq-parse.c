@@ -1,6 +1,7 @@
 
 #include <dtq-parse.h>
 #include <stdlib.h>
+#include <stdbool.h>
 #include <assert.h>
 #include <stdio.h>
 
@@ -21,23 +22,34 @@ struct NavExpr * parseNavExpr(const char * expr)
     return parsedExpression;
 }
 
-struct TestExpr * newTestExprString(enum TEST_TYPE op, char * property,
+struct TestExpr * newTestExprExist(char * property)
+{
+	struct TestExpr * expr = malloc(sizeof *expr);
+	assert(expr);
+	expr->type = TEST_TYPE_EXIST;
+	expr->property = property;
+	return expr;
+}
+
+struct TestExpr * newTestExprString(enum TEST_OP op, char * property,
 	char * string)
 {
 	struct TestExpr * expr = malloc(sizeof *expr);
 	assert(expr);
-	expr->type = op | TEST_TYPE_STR;
+	expr->type = TEST_TYPE_STR;
+	expr->op = op;
 	expr->property = property;
 	expr->string = string;
 	return expr;
 }
 
-struct TestExpr * newTestExprInteger(enum TEST_TYPE op, char * property,
+struct TestExpr * newTestExprInteger(enum TEST_OP op, char * property,
 	int integer)
 {
 	struct TestExpr * expr = malloc(sizeof *expr);
 	assert(expr);
-	expr->type = op | TEST_TYPE_INT;
+	expr->type = TEST_TYPE_INT;
+	expr->op = op;
 	expr->property = property;
 	expr->integer = integer;
 	return expr;
@@ -94,24 +106,30 @@ void freeNavExpr(struct NavExpr * expr)
 }
 
 static const char * testOperators[] = {
-	[TEST_TYPE_EQ] = "=",
-	[TEST_TYPE_NE] = "!=",
-	[TEST_TYPE_LT] = "<",
-	[TEST_TYPE_GT] = ">",
-	[TEST_TYPE_LE] = "<=",
-	[TEST_TYPE_GE] = ">=",
-	[TEST_TYPE_CONTAINS] = "~="
+	[TEST_OP_EQ] = "=",
+	[TEST_OP_NE] = "!=",
+	[TEST_OP_LT] = "<",
+	[TEST_OP_GT] = ">",
+	[TEST_OP_LE] = "<=",
+	[TEST_OP_GE] = ">=",
+	[TEST_OP_CONTAINS] = "~="
 };
 
 static void printTest(const struct TestExpr * test)
 {
-	const char * op = testOperators[test->type & TEST_TYPE_MASK];
-	if (test->type == TEST_TYPE_EXIST) {
+	const char * op = testOperators[test->op];
+	switch (test->type) {
+	case TEST_TYPE_EXIST:
 		printf("%s", test->property);
-	} else if (test->type & TEST_TYPE_STR) {
+		break;
+	case TEST_TYPE_STR:
 		printf("%s %s \"%s\"", test->property, op, test->string);
-	} else {
+		break;
+	case TEST_TYPE_INT:
 		printf("%s %s 0x%x", test->property, op, test->integer);
+		break;
+	default:
+		assert(false);
 	}
 }
 

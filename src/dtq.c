@@ -93,38 +93,41 @@ static bool testTest(const void * fdt, off_t offset,
 	if (!prop)
 		return false;
 
-	if (test->type == TEST_TYPE_EXIST)
+	switch (test->type) {
+	case TEST_TYPE_EXIST:
 		return true;
-
-	enum TEST_TYPE operator = test->type & TEST_TYPE_MASK;
-
-	if (test->type & TEST_TYPE_STR) {
-		if (operator == TEST_TYPE_CONTAINS) {
+	case TEST_TYPE_STR:
+		if (test->op == TEST_OP_CONTAINS) {
 			return containsString(prop->data, len, test->string);
 		} else {
 			bool res = len == strlen(test->string) + 1;
 			res = res && !memcmp(test->string, prop->data, len);
-			return !(res ^ (operator == TEST_TYPE_EQ));
+			return !(res ^ (test->op == TEST_OP_EQ));
 		}
-	} else {
-		if (operator == TEST_TYPE_CONTAINS) {
+		break;
+	case TEST_TYPE_INT:
+		if (test->op == TEST_OP_CONTAINS) {
 			return containsInt(prop->data, len, test->integer);
 		} else {
 			if (len != 4)
 				return false;
 			uint32_t i = fdt32_to_cpu(*(fdt32_t*)prop->data);
 
-			switch (test->type & TEST_TYPE_MASK) {
-			case TEST_TYPE_EQ: return i == test->integer;
-			case TEST_TYPE_NE: return i != test->integer;
-			case TEST_TYPE_LE: return i < test->integer;
-			case TEST_TYPE_GE: return i > test->integer;
-			case TEST_TYPE_LT: return i <= test->integer;
-			case TEST_TYPE_GT: return i >= test->integer;
-			default: return false;
+			switch (test->op) {
+			case TEST_OP_EQ: return i == test->integer;
+			case TEST_OP_NE: return i != test->integer;
+			case TEST_OP_LE: return i < test->integer;
+			case TEST_OP_GE: return i > test->integer;
+			case TEST_OP_LT: return i <= test->integer;
+			case TEST_OP_GT: return i >= test->integer;
+			default: assert(false);
 			}
 		}
+		break;
+	default:
+		assert(false);
 	}
+	return false;
 }
 
 static bool testAttributes(const void * fdt, off_t offset,
