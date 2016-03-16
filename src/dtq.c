@@ -201,18 +201,19 @@ static void evaluateNode(const void * fdt, off_t offset, int depth,
 static void evaluate(const void * fdt, off_t offset, int depth,
 	const struct NavExpr * expr)
 {
-	if (expr->name) {
+	if (expr->name || expr->attributes) {
 		offset = fdt_first_subnode(fdt, offset);
-		while (offset != FDT_ERR_NOTFOUND) {
-			if (!strcmp(expr->name, fdt_get_name(fdt, offset, NULL)))
+		while (offset != -FDT_ERR_NOTFOUND) {
+			if (!expr->name ||
+				!strcmp(expr->name, fdt_get_name(fdt, offset, NULL)))
 				evaluateNode(fdt, offset, depth + 1, expr);
 			offset = fdt_next_subnode(fdt, offset);
 		}
 	} else {
+		int cdepth = 0;
 		while (true) {
-			int cdepth = 0;
 			offset = fdt_next_node(fdt, offset, &cdepth);
-			if (cdepth <= 0)
+			if (offset < 0 || cdepth < 1)
 				return;
 			evaluateNode(fdt, offset, depth + cdepth, expr);
 		}
