@@ -201,7 +201,12 @@ static void evaluateNode(const void * fdt, off_t offset, int depth,
 static void evaluate(const void * fdt, off_t offset, int depth,
 	const struct NavExpr * expr)
 {
-	if (expr->name || expr->attributes) {
+	switch (expr->type) {
+	case NAV_EXPR_TYPE_ROOT:
+		if (offset == 0)
+			evaluateNode(fdt, offset, depth + 1, expr);
+		break;
+	case NAV_EXPR_TYPE_NODE:
 		offset = fdt_first_subnode(fdt, offset);
 		while (offset != -FDT_ERR_NOTFOUND) {
 			if (!expr->name ||
@@ -209,7 +214,9 @@ static void evaluate(const void * fdt, off_t offset, int depth,
 				evaluateNode(fdt, offset, depth + 1, expr);
 			offset = fdt_next_subnode(fdt, offset);
 		}
-	} else {
+		break;
+	case NAV_EXPR_TYPE_DESCEND: {
+		expr = expr->subExpr;
 		int cdepth = 0;
 		while (true) {
 			offset = fdt_next_node(fdt, offset, &cdepth);
@@ -217,6 +224,8 @@ static void evaluate(const void * fdt, off_t offset, int depth,
 				return;
 			evaluateNode(fdt, offset, depth + cdepth, expr);
 		}
+	}
+		break;
 	}
 }
 

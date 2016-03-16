@@ -6,8 +6,15 @@
 struct AttrExpr;
 struct TestExpr;
 
+enum NAV_EXPR_TYPE {
+	NAV_EXPR_TYPE_ROOT,
+	NAV_EXPR_TYPE_DESCEND,
+	NAV_EXPR_TYPE_NODE,
+};
+
 struct NavExpr {
 	char * name;
+	enum NAV_EXPR_TYPE type;
 	struct AttrExpr * attributes;
 	struct NavExpr * subExpr;
 };
@@ -61,8 +68,8 @@ void lexError(const char * yytext);
 
 void yyerror(struct NavExpr ** parsedExpression, const char * expr, const char * s);
 
-struct NavExpr * newNavExpr(char * name, struct AttrExpr * attr,
-	struct NavExpr * subExpr);
+struct NavExpr * newNavExpr(enum NAV_EXPR_TYPE type, char * name,
+	struct AttrExpr * attr, struct NavExpr * subExpr);
 
 struct TestExpr * newTestExprExist(char * property);
 

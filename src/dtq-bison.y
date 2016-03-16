@@ -36,15 +36,17 @@ extern int yylex();
 
 %%
 
-start: path { *parsedExpression = $1; };
+start: path { *parsedExpression = newNavExpr(NAV_EXPR_TYPE_ROOT, NULL, NULL, $1); };
 
 path:
-  '/' IDENT attributes path { $$ = newNavExpr($2, $3, $4); }
- |'/' attributes path       { $$ = newNavExpr(NULL, $2, $3); }
+  '/' path                  { $$ = newNavExpr(NAV_EXPR_TYPE_DESCEND, NULL, NULL, $2); }
+ |'/' IDENT attributes path { $$ = newNavExpr(NAV_EXPR_TYPE_NODE, $2, $3, $4); }
+ |'/' IDENT path            { $$ = newNavExpr(NAV_EXPR_TYPE_NODE, $2, NULL, $3); }
+ |'/' attributes path       { $$ = newNavExpr(NAV_EXPR_TYPE_NODE, NULL, $2, $3); }
  |                          { $$ = NULL; }
  ;
 
-attributes: '[' attributeExpr ']' { $$ = $2; } | { $$ = NULL; };
+attributes: '[' attributeExpr ']' { $$ = $2; };
 
 attributeExpr:
   '(' attributeExpr ')' { $$ = $2; }

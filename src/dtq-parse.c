@@ -78,11 +78,12 @@ void yyerror(struct NavExpr ** parsedExpression, const char * expr, const char *
 	puts("");
 }
 
-struct NavExpr * newNavExpr(char * name, struct AttrExpr * attr,
-	struct NavExpr * subExpr)
+struct NavExpr * newNavExpr(enum NAV_EXPR_TYPE type, char * name,
+	struct AttrExpr * attr, struct NavExpr * subExpr)
 {
 	struct NavExpr * expr = malloc(sizeof *expr);
 	assert(expr);
+	expr->type = type;
 	expr->name = name;
 	expr->attributes = attr;
 	expr->subExpr = subExpr;
@@ -230,9 +231,14 @@ static void printAttributes(const struct AttrExpr * attr)
 
 void printNavExpr(const struct NavExpr * expr)
 {
-	printf("/");
-	if (expr->name)
+	if (expr->type != NAV_EXPR_TYPE_ROOT)
+		printf("/");
+
+	if (expr->type == NAV_EXPR_TYPE_DESCEND) {
+		printf("");
+	} else if (expr->name) {
 		printf("%s", expr->name);
+	}
 	if (expr->attributes) {
 		printf("[");
 		printAttributes(expr->attributes);
