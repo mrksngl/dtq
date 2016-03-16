@@ -3,14 +3,9 @@
 #include <dtq-parse.h>
 
 extern int yylex();
-
-void yyerror(char *s) {
-  fprintf(stderr, "%s\n", s);
-}
-
-extern struct NavExpr * parsedExpression;
-
 %}
+
+%parse-param {struct NavExpr ** parsedExpression}
 
 %union {
   uint64_t number;
@@ -40,37 +35,12 @@ extern struct NavExpr * parsedExpression;
 
 %%
 
-start: path { parsedExpression = $1; };
+start: path { *parsedExpression = $1; };
 
 path:
-  '/' IDENT attributes path
-    { struct NavExpr * expr = malloc(sizeof *expr);
-      expr->name = $2;
-      expr->attributes = $3;
-      expr->subExpr = $4;
-      $$ = expr;
-    }
- |'/' IDENT attributes
-    { struct NavExpr * expr = malloc(sizeof *expr);
-      expr->name = $2;
-      expr->attributes = $3;
-      expr->subExpr = NULL;
-      $$ = expr;
-    }
- |'/' attributes path
-    { struct NavExpr * expr = malloc(sizeof *expr);
-      expr->name = NULL;
-      expr->attributes = $2;
-      expr->subExpr = $3;
-      $$ = expr;
-    }
- |'/' attributes
-    { struct NavExpr * expr = malloc(sizeof *expr);
-      expr->name = NULL;
-      expr->attributes = $2;
-      expr->subExpr = NULL;
-      $$ = expr;
-    }
+  '/' IDENT attributes path { $$ = newNavExpr($2, $3, $4); }
+ |'/' attributes path       { $$ = newNavExpr(NULL, $2, $3); }
+ |                          { $$ = NULL; }
  ;
 
 attributes: '[' attributeExpr ']' { $$ = $2; } | { $$ = NULL; };

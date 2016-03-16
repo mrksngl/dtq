@@ -1,5 +1,9 @@
 %{
 #include "dtq-bison.h"
+#include "dtq-parse.h"
+#define YY_NO_INPUT
+#define YY_NO_UNPUT
+
 %}
 
 %option noyywrap
@@ -25,6 +29,6 @@
 
 [ \t]             ;
 
-.                 yyerror("Unknown character");
+.                 lexError(yytext);
 
 %%

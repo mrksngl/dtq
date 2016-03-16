@@ -5,24 +5,47 @@
 #include <assert.h>
 #include <stdio.h>
 
-int yyparse(void);
+int yyparse(struct NavExpr ** parsedExpression);
 
 typedef struct yy_buffer_state * YY_BUFFER_STATE;
 extern int yyparse();
 extern YY_BUFFER_STATE yy_scan_string(const char * str);
 extern void yy_delete_buffer(YY_BUFFER_STATE buffer);
 
-struct NavExpr * parsedExpression;
-
 struct NavExpr * parseNavExpr(const char * expr)
 {
+	struct NavExpr * parsedExpression;
+
 	YY_BUFFER_STATE buffer = yy_scan_string(expr);
-	int ret = yyparse();
+	int ret = yyparse(&parsedExpression);
 	yy_delete_buffer(buffer);
 
-	//if (ret)
+	if (ret) {
+		return NULL;
+	} else {
+		return parsedExpression;
+	}
+}
 
-	return parsedExpression;
+void lexError(const char * yytext)
+{
+	printf("Lex Error: %s\n", yytext);
+}
+
+void yyerror(struct NavExpr ** parsedExpression, const char * s)
+{
+	printf("Parser Error: %s\n", s);
+}
+
+struct NavExpr * newNavExpr(char * name, struct AttrExpr * attr,
+	struct NavExpr * subExpr)
+{
+	struct NavExpr * expr = malloc(sizeof *expr);
+	assert(expr);
+	expr->name = name;
+	expr->attributes = attr;
+	expr->subExpr = subExpr;
+	return expr;
 }
 
 struct TestExpr * newTestExprExist(char * property)

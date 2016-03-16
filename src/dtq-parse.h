@@ -57,6 +57,13 @@ struct TestExpr {
 	};
 };
 
+void lexError(const char * yytext);
+
+void yyerror(struct NavExpr ** parsedExpression, const char * s);
+
+struct NavExpr * newNavExpr(char * name, struct AttrExpr * attr,
+	struct NavExpr * subExpr);
+
 struct TestExpr * newTestExprExist(char * property);
 
 struct TestExpr * newTestExprString(enum TEST_OP op, char * property,

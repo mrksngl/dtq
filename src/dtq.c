@@ -26,6 +26,9 @@ int main(int argc, char * argv[])
 
 	struct NavExpr * expr = parseNavExpr(argv[2]);
 
+	if (!expr)
+		return EXIT_FAILURE;
+
 	printNavExpr(expr);
 	printf("\n");
 
