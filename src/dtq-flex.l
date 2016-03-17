@@ -1,6 +1,11 @@
 %{
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
 #include "dtq-bison.h"
-#include "dtq-parse.h"
+#include <parser.h>
+
 #define YY_NO_INPUT
 #define YY_NO_UNPUT
 

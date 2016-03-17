@@ -1,5 +1,7 @@
 
-#define _GNU_SOURCE
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -15,7 +17,7 @@
 #include <libfdt.h>
 #include <limits.h>
 
-#include <dtq-parse.h>
+#include <parser.h>
 
 static void queryFdt(const void * fdt, const struct NavExpr * expr);
 

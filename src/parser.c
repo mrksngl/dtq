@@ -1,5 +1,10 @@
 
-#include <dtq-parse.h>
+#ifdef _HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include "parser.h"
+
 #include <dtq-bison.h>
 #include <stdlib.h>
 #include <stdbool.h>
