@@ -105,7 +105,7 @@ void yyerror(struct NodeTest ** parsedExpression, const char * expr,
 	const char * s);
 
 struct NodeTest * newNodeTest(enum NODE_TEST_TYPE type, char * name,
-	struct PropertyTest * attr, struct NodeTest * subExpr);
+	struct PropertyTest * properties, struct NodeTest * subExpr);
 
 struct AtomicPropertyTest * newAtomicPropertyTestExist(char * property);
 
@@ -123,6 +123,6 @@ void freeAtomicPropertyTest(struct AtomicPropertyTest * test);
 
 void freePropertyTest(struct PropertyTest * test);
 
-void printNodeTest(const struct NodeTest * expr);
+void printNodeTest(const struct NodeTest * test);
 
 #endif
