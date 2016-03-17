@@ -3,90 +3,126 @@
 
 #include <stdint.h>
 
-struct AttrExpr;
-struct TestExpr;
-
-enum NAV_EXPR_TYPE {
-	NAV_EXPR_TYPE_ROOT,
-	NAV_EXPR_TYPE_DESCEND,
-	NAV_EXPR_TYPE_NODE,
+/** Data Type of an atomic property test */
+enum ATOMIC_PROPERTY_TEST_TYPE {
+	/** Test for existence (no data type needed) */
+	ATOMIC_PROPERTY_TEST_TYPE_EXIST,
+	/** Test on an integer or integer array */
+	ATOMIC_PROPERTY_TEST_TYPE_INT,
+	/** Test on a string or string array */
+	ATOMIC_PROPERTY_TEST_TYPE_STR
 };
 
-struct NavExpr {
-	char * name;
-	enum NAV_EXPR_TYPE type;
-	struct AttrExpr * attributes;
-	struct NavExpr * subExpr;
+/** Comparison operator of an atomic property test */
+enum ATOMIC_PROPERTY_TEST_OP {
+	/** Test on equality */
+	ATOMIC_PROPERTY_TEST_OP_EQ,
+	/** Test on inequality */
+	ATOMIC_PROPERTY_TEST_OP_NE,
+	/** Test "less or equal" */
+	ATOMIC_PROPERTY_TEST_OP_LE,
+	/** Test "greater or equal */
+	ATOMIC_PROPERTY_TEST_OP_GE,
+	/** Test "less than" */
+	ATOMIC_PROPERTY_TEST_OP_LT,
+	/** Test "greater than" */
+	ATOMIC_PROPERTY_TEST_OP_GT,
+	/** Test equality of one element in an array */
+	ATOMIC_PROPERTY_TEST_OP_CONTAINS
 };
 
-enum ATTR_TYPE {
-	ATTR_TYPE_AND,
-	ATTR_TYPE_OR,
-	ATTR_TYPE_NEG,
-	ATTR_TYPE_TEST,
-};
-
-struct AttrExpr {
-	enum ATTR_TYPE type;
-	union {
-		struct {
-			struct AttrExpr * left;
-			struct AttrExpr * right;
-		};
-		struct AttrExpr * neg;
-		struct TestExpr * test;
-	};
-};
-
-enum TEST_TYPE {
-	TEST_TYPE_EXIST,
-	TEST_TYPE_INT,
-	TEST_TYPE_STR
-};
-
-enum TEST_OP {
-	TEST_OP_EQ,
-	TEST_OP_NE,
-	TEST_OP_LE,
-	TEST_OP_GE = 4,
-	TEST_OP_LT = 5,
-	TEST_OP_GT = 6,
-	TEST_OP_CONTAINS = 7,
-};
-
-struct TestExpr {
-	enum TEST_TYPE type;
-	enum TEST_OP op;
+/** AST: Atomic Property Test */
+struct AtomicPropertyTest {
+	/** Data Type */
+	enum ATOMIC_PROPERTY_TEST_TYPE type;
+	/** Comparison operator */
+	enum ATOMIC_PROPERTY_TEST_OP op;
+	/** Property name */
 	char * property;
 	union {
+		/** Data to compare to: string */
 		char * string;
+		/** Data to compare to: integer */
 		uint32_t integer;
 	};
 };
 
+/** Property test operation */
+enum PROPERTY_TEST_OP {
+	/** Conjunction of two tests */
+	PROPERTY_TEST_OP_AND,
+	/** Disjunction of two tests */
+	PROPERTY_TEST_OP_OR,
+	/** Negation of a test */
+	PROPERTY_TEST_OP_NEG,
+	/** An atomic test (-> leaf of AST) */
+	PROPERTY_TEST_OP_TEST
+};
+
+/** AST: Property Test (i.e. logical conjunction of (atomic) property tests) */
+struct PropertyTest {
+	/** Conjunction type */
+	enum PROPERTY_TEST_OP type;
+	union {
+		struct {
+			/** for binary operators: left child */
+			struct PropertyTest * left;
+			/** for binary operators: right child */
+			struct PropertyTest * right;
+		};
+		/** for unary operators: child */
+		struct PropertyTest * neg;
+		/** for atomic tests: leaf */
+		struct AtomicPropertyTest * test;
+	};
+};
+
+/** Node Test Type */
+enum NODE_TEST_TYPE {
+	/** Root node */
+	NODE_TEST_TYPE_ROOT,
+	/** Simple node */
+	NODE_TEST_TYPE_NODE,
+	/** Descending node (recurses into ALL subnodes) */
+	NODE_TEST_TYPE_DESCEND,
+};
+
+/** AST: Node Test */
+struct NodeTest {
+	/** node type */
+	enum NODE_TEST_TYPE type;
+	/** optional: node name to match */
+	char * name;
+	/** optional: node properties */
+	struct PropertyTest * properties;
+	/** optional: child node test. Required for type NODE_TEST_TYPE_DESCEND */
+	struct NodeTest * subExpr;
+};
+
 void lexError(const char * yytext);
 
-void yyerror(struct NavExpr ** parsedExpression, const char * expr, const char * s);
+void yyerror(struct NodeTest ** parsedExpression, const char * expr,
+	const char * s);
 
-struct NavExpr * newNavExpr(enum NAV_EXPR_TYPE type, char * name,
-	struct AttrExpr * attr, struct NavExpr * subExpr);
+struct NodeTest * newNodeTest(enum NODE_TEST_TYPE type, char * name,
+	struct PropertyTest * attr, struct NodeTest * subExpr);
 
-struct TestExpr * newTestExprExist(char * property);
+struct AtomicPropertyTest * newAtomicPropertyTestExist(char * property);
 
-struct TestExpr * newTestExprString(enum TEST_OP op, char * property,
-	char * string);
+struct AtomicPropertyTest * newAtomicPropertyTestString(
+	enum ATOMIC_PROPERTY_TEST_OP op, char * property, char * string);
 
-struct TestExpr * newTestExprInteger(enum TEST_OP op, char * property,
-	int integer);
+struct AtomicPropertyTest * newAtomicPropertyTestInteger(
+	enum ATOMIC_PROPERTY_TEST_OP op, char * property, int integer);
 
-struct NavExpr * parseNavExpr(const char * expr);
+struct NodeTest * parseNodeTestExpr(const char * expr);
 
-void freeNavExpr(struct NavExpr * expr);
+void freeNodeTest(struct NodeTest * test);
 
-void freeTest(struct TestExpr * expr);
+void freeAtomicPropertyTest(struct AtomicPropertyTest * test);
 
-void freeAttributes(struct AttrExpr * expr);
+void freePropertyTest(struct PropertyTest * test);
 
-void printNavExpr(const struct NavExpr * expr);
+void printNodeTest(const struct NodeTest * expr);
 
 #endif

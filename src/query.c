@@ -12,6 +12,8 @@
 #include <assert.h>
 
 static void printPath(const void * fdt, int offset);
+static void query(const void * fdt, int offset, int depth,
+	const struct NodeTest * test);
 
 static bool containsString(const char * data, int len, const char * str)
 {
@@ -37,7 +39,8 @@ static bool containsInt(const char * data, int len, uint32_t i)
 	return false;
 }
 
-static bool testTest(const void * fdt, int offset, const struct TestExpr * test)
+static bool queryAtomicPropertyTest(const void * fdt, int offset,
+	const struct AtomicPropertyTest * test)
 {
 	int len;
 	const struct fdt_property * prop = fdt_get_property(fdt, offset,
@@ -46,19 +49,10 @@ static bool testTest(const void * fdt, int offset, const struct TestExpr * test)
 		return false;
 
 	switch (test->type) {
-	case TEST_TYPE_EXIST:
+	case ATOMIC_PROPERTY_TEST_TYPE_EXIST:
 		return true;
-	case TEST_TYPE_STR:
-		if (test->op == TEST_OP_CONTAINS) {
-			return containsString(prop->data, len, test->string);
-		} else {
-			bool res = len == strlen(test->string) + 1;
-			res = res && !memcmp(test->string, prop->data, len);
-			return !(res ^ (test->op == TEST_OP_EQ));
-		}
-		break;
-	case TEST_TYPE_INT:
-		if (test->op == TEST_OP_CONTAINS) {
+	case ATOMIC_PROPERTY_TEST_TYPE_INT:
+		if (test->op == ATOMIC_PROPERTY_TEST_OP_CONTAINS) {
 			return containsInt(prop->data, len, test->integer);
 		} else {
 			if (len != 4)
@@ -66,14 +60,23 @@ static bool testTest(const void * fdt, int offset, const struct TestExpr * test)
 			uint32_t i = fdt32_to_cpu(*(fdt32_t*)prop->data);
 
 			switch (test->op) {
-			case TEST_OP_EQ: return i == test->integer;
-			case TEST_OP_NE: return i != test->integer;
-			case TEST_OP_LE: return i < test->integer;
-			case TEST_OP_GE: return i > test->integer;
-			case TEST_OP_LT: return i <= test->integer;
-			case TEST_OP_GT: return i >= test->integer;
+			case ATOMIC_PROPERTY_TEST_OP_EQ: return i == test->integer;
+			case ATOMIC_PROPERTY_TEST_OP_NE: return i != test->integer;
+			case ATOMIC_PROPERTY_TEST_OP_LE: return i <= test->integer;
+			case ATOMIC_PROPERTY_TEST_OP_GE: return i >= test->integer;
+			case ATOMIC_PROPERTY_TEST_OP_LT: return i < test->integer;
+			case ATOMIC_PROPERTY_TEST_OP_GT: return i > test->integer;
 			default: assert(false);
 			}
+		}
+		break;
+	case ATOMIC_PROPERTY_TEST_TYPE_STR:
+		if (test->op == ATOMIC_PROPERTY_TEST_OP_CONTAINS) {
+			return containsString(prop->data, len, test->string);
+		} else {
+			bool res = len == strlen(test->string) + 1;
+			res = res && !memcmp(test->string, prop->data, len);
+			return !(res ^ (test->op == ATOMIC_PROPERTY_TEST_OP_EQ));
 		}
 		break;
 	default:
@@ -82,20 +85,20 @@ static bool testTest(const void * fdt, int offset, const struct TestExpr * test)
 	return false;
 }
 
-static bool testAttributes(const void * fdt, int offset,
-	const struct AttrExpr * attr)
+static bool queryPropertyTest(const void * fdt, int offset,
+	const struct PropertyTest * attr)
 {
-	switch(attr->type) {
-	case ATTR_TYPE_AND:
-		return testAttributes(fdt, offset, attr->left) &&
-			testAttributes(fdt, offset, attr->right);
-	case ATTR_TYPE_OR:
-		return testAttributes(fdt, offset, attr->left) ||
-			testAttributes(fdt, offset, attr->right);
-	case ATTR_TYPE_NEG:
-		return !testAttributes(fdt, offset, attr->neg);
-	case ATTR_TYPE_TEST:
-		return testTest(fdt, offset, attr->test);
+	switch (attr->type) {
+	case PROPERTY_TEST_OP_AND:
+		return queryPropertyTest(fdt, offset, attr->left) &&
+			queryPropertyTest(fdt, offset, attr->right);
+	case PROPERTY_TEST_OP_OR:
+		return queryPropertyTest(fdt, offset, attr->left) ||
+			queryPropertyTest(fdt, offset, attr->right);
+	case PROPERTY_TEST_OP_NEG:
+		return !queryPropertyTest(fdt, offset, attr->neg);
+	case PROPERTY_TEST_OP_TEST:
+		return queryAtomicPropertyTest(fdt, offset, attr->test);
 	default:
 		return false;
 	}
@@ -133,54 +136,51 @@ int fdt_next_subnode(const void *fdt, int offset)
 }
 #endif
 
-static void evaluate(const void * fdt, int offset, int depth,
-	const struct NavExpr * expr);
-
-static void evaluateNode(const void * fdt, int offset, int depth,
-	const struct NavExpr * expr)
+static void queryNode(const void * fdt, int offset, int depth,
+	const struct NodeTest * test)
 {
-	if (expr->attributes && !testAttributes(fdt, offset, expr->attributes))
+	if (test->properties && !queryPropertyTest(fdt, offset, test->properties))
 		return;
-	if (expr->subExpr)
-		evaluate(fdt, offset, depth, expr->subExpr);
+	if (test->subExpr)
+		query(fdt, offset, depth, test->subExpr);
 	else
 		printPath(fdt, offset);
 }
 
-static void evaluate(const void * fdt, int offset, int depth,
-	const struct NavExpr * expr)
+static void query(const void * fdt, int offset, int depth,
+	const struct NodeTest * test)
 {
-	switch (expr->type) {
-	case NAV_EXPR_TYPE_ROOT:
+	switch (test->type) {
+	case NODE_TEST_TYPE_ROOT:
 		if (offset == 0)
-			evaluateNode(fdt, offset, depth + 1, expr);
+			queryNode(fdt, offset, depth + 1, test);
 		break;
-	case NAV_EXPR_TYPE_NODE:
+	case NODE_TEST_TYPE_NODE:
 		offset = fdt_first_subnode(fdt, offset);
 		while (offset != -FDT_ERR_NOTFOUND) {
-			if (!expr->name ||
-				!strcmp(expr->name, fdt_get_name(fdt, offset, NULL)))
-				evaluateNode(fdt, offset, depth + 1, expr);
+			if (!test->name ||
+				!strcmp(test->name, fdt_get_name(fdt, offset, NULL)))
+				queryNode(fdt, offset, depth + 1, test);
 			offset = fdt_next_subnode(fdt, offset);
 		}
 		break;
-	case NAV_EXPR_TYPE_DESCEND: {
-		expr = expr->subExpr;
+	case NODE_TEST_TYPE_DESCEND: {
+		test = test->subExpr;
 		int cdepth = 0;
 		while (true) {
 			offset = fdt_next_node(fdt, offset, &cdepth);
 			if (offset < 0 || cdepth < 1)
 				return;
-			evaluateNode(fdt, offset, depth + cdepth, expr);
+			queryNode(fdt, offset, depth + cdepth, test);
 		}
 	}
 		break;
 	}
 }
 
-void queryFdt(const void * fdt, const struct NavExpr * expr)
+void queryFdt(const void * fdt, const struct NodeTest * expr)
 {
-	evaluate(fdt, 0, 0, expr);
+	query(fdt, 0, 0, expr);
 }
 
 static void printPath(const void * fdt, int offset)

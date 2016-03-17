@@ -9,29 +9,28 @@
 extern int yylex();
 %}
 
-%parse-param {struct NavExpr ** parsedExpression} {const char * unparsedExpression}
+%parse-param {struct NodeTest ** parsedNodeTest} {const char * unparsedExpression}
 %locations
 
 %union {
   uint64_t number;
   char * text;
-  struct NavExpr * navExpr;
-  struct AttrExpr * attrExpr;
-  struct TestExpr * testExpr;
+  struct NodeTest * node;
+  struct PropertyTest * properties;
+  struct AtomicPropertyTest * atom;
 };
 
-%type <navExpr> path
-%type <attrExpr> attributes
-%type <attrExpr> attributeExpr
-%type <testExpr> test
+%type <node> path
+%type <properties> properties propertyExpr
+%type <atom> property
 
 %token <number> NUMBER
 %token <text> IDENT STRING
 %token LE GE NE CONTAINS
 
-%destructor { freeNavExpr($$); } <navExpr>
-%destructor { freeAttributes($$); } <attrExpr>
-%destructor { freeTest($$); } <testExpr>
+%destructor { freeNodeTest($$); } <node>
+%destructor { freePropertyTest($$); } <properties>
+%destructor { freeAtomicPropertyTest($$); } <atom>
 
 
 %left '|'
@@ -40,59 +39,59 @@ extern int yylex();
 
 %%
 
-start: path { *parsedExpression = newNavExpr(NAV_EXPR_TYPE_ROOT, NULL, NULL, $1); };
+start: path { *parsedNodeTest = newNodeTest(NODE_TEST_TYPE_ROOT, NULL, NULL, $1); };
 
 path:
-  '/' path                  { $$ = newNavExpr(NAV_EXPR_TYPE_DESCEND, NULL, NULL, $2); }
- |'/' IDENT attributes path { $$ = newNavExpr(NAV_EXPR_TYPE_NODE, $2, $3, $4); }
- |'/' IDENT path            { $$ = newNavExpr(NAV_EXPR_TYPE_NODE, $2, NULL, $3); }
- |'/' attributes path       { $$ = newNavExpr(NAV_EXPR_TYPE_NODE, NULL, $2, $3); }
+  '/' path                  { $$ = newNodeTest(NODE_TEST_TYPE_DESCEND, NULL, NULL, $2); }
+ |'/' IDENT properties path { $$ = newNodeTest(NODE_TEST_TYPE_NODE, $2, $3, $4); }
+ |'/' IDENT path            { $$ = newNodeTest(NODE_TEST_TYPE_NODE, $2, NULL, $3); }
+ |'/' properties path       { $$ = newNodeTest(NODE_TEST_TYPE_NODE, NULL, $2, $3); }
  |                          { $$ = NULL; }
  ;
 
-attributes: '[' attributeExpr ']' { $$ = $2; };
+properties: '[' propertyExpr ']' { $$ = $2; };
 
-attributeExpr:
-  '(' attributeExpr ')' { $$ = $2; }
- |attributeExpr '&' attributeExpr
-    { struct AttrExpr * expr = malloc(sizeof *expr);
-      expr->type = ATTR_TYPE_AND;
-      expr->left = $1;
-      expr->right = $3;
-      $$ = expr;
+propertyExpr:
+  '(' propertyExpr ')' { $$ = $2; }
+ |propertyExpr '&' propertyExpr
+    { struct PropertyTest * test = malloc(sizeof *test);
+      test->type = PROPERTY_TEST_OP_AND;
+      test->left = $1;
+      test->right = $3;
+      $$ = test;
     }
- |attributeExpr '|' attributeExpr
-    { struct AttrExpr * expr = malloc(sizeof *expr);
-      expr->type = ATTR_TYPE_OR;
-      expr->left = $1;
-      expr->right = $3;
-      $$ = expr;
+ |propertyExpr '|' propertyExpr
+    { struct PropertyTest * test = malloc(sizeof *test);
+      test->type = PROPERTY_TEST_OP_OR;
+      test->left = $1;
+      test->right = $3;
+      $$ = test;
     }
- |'!'attributeExpr
-    { struct AttrExpr * expr = malloc(sizeof *expr);
-      expr->type = ATTR_TYPE_NEG;
-      expr->neg = $2;
-      $$ = expr;
+ |'!'propertyExpr
+    { struct PropertyTest * test = malloc(sizeof *test);
+      test->type = PROPERTY_TEST_OP_NEG;
+      test->neg = $2;
+      $$ = test;
     }
- |test
-    { struct AttrExpr * expr = malloc(sizeof *expr);
-      expr->type = ATTR_TYPE_TEST;
-      expr->test = $1;
-      $$ = expr;
+ |property
+    { struct PropertyTest * test = malloc(sizeof *test);
+      test->type = PROPERTY_TEST_OP_TEST;
+      test->test = $1;
+      $$ = test;
     }
  |  { $$ = NULL; }
  ;
 
-test:
-  IDENT { $$ = newTestExprExist($1); }
- |IDENT '=' STRING { $$ = newTestExprString(TEST_OP_EQ, $1, $3); }
- |IDENT NE STRING { $$ = newTestExprString(TEST_OP_NE, $1, $3); }
- |IDENT CONTAINS STRING { $$ = newTestExprString(TEST_OP_CONTAINS, $1, $3); }
- |IDENT '=' NUMBER { $$ = newTestExprInteger(TEST_OP_EQ, $1, $3); }
- |IDENT CONTAINS NUMBER { $$ = newTestExprInteger(TEST_OP_CONTAINS, $1, $3); }
- |IDENT '>' NUMBER { $$ = newTestExprInteger(TEST_OP_GT, $1, $3); }
- |IDENT '<' NUMBER { $$ = newTestExprInteger(TEST_OP_LT, $1, $3); }
- |IDENT NE NUMBER { $$ = newTestExprInteger(TEST_OP_NE, $1, $3); }
- |IDENT LE NUMBER { $$ = newTestExprInteger(TEST_OP_LE, $1, $3); }
- |IDENT GE NUMBER { $$ = newTestExprInteger(TEST_OP_GE, $1, $3); }
+property:
+  IDENT { $$ = newAtomicPropertyTestExist($1); }
+ |IDENT '=' NUMBER { $$ = newAtomicPropertyTestInteger(ATOMIC_PROPERTY_TEST_OP_EQ, $1, $3); }
+ |IDENT NE NUMBER { $$ = newAtomicPropertyTestInteger(ATOMIC_PROPERTY_TEST_OP_NE, $1, $3); }
+ |IDENT LE NUMBER { $$ = newAtomicPropertyTestInteger(ATOMIC_PROPERTY_TEST_OP_LE, $1, $3); }
+ |IDENT GE NUMBER { $$ = newAtomicPropertyTestInteger(ATOMIC_PROPERTY_TEST_OP_GE, $1, $3); }
+ |IDENT '<' NUMBER { $$ = newAtomicPropertyTestInteger(ATOMIC_PROPERTY_TEST_OP_LT, $1, $3); }
+ |IDENT '>' NUMBER { $$ = newAtomicPropertyTestInteger(ATOMIC_PROPERTY_TEST_OP_GT, $1, $3); }
+ |IDENT CONTAINS NUMBER { $$ = newAtomicPropertyTestInteger(ATOMIC_PROPERTY_TEST_OP_CONTAINS, $1, $3); }
+ |IDENT '=' STRING { $$ = newAtomicPropertyTestString(ATOMIC_PROPERTY_TEST_OP_EQ, $1, $3); }
+ |IDENT NE STRING { $$ = newAtomicPropertyTestString(ATOMIC_PROPERTY_TEST_OP_NE, $1, $3); }
+ |IDENT CONTAINS STRING { $$ = newAtomicPropertyTestString(ATOMIC_PROPERTY_TEST_OP_CONTAINS, $1, $3); }
  ;
