@@ -96,9 +96,9 @@ static bool queryPropertyTest(const void * fdt, int offset,
 		return queryPropertyTest(fdt, offset, attr->left) ||
 			queryPropertyTest(fdt, offset, attr->right);
 	case PROPERTY_TEST_OP_NEG:
-		return !queryPropertyTest(fdt, offset, attr->neg);
-	case PROPERTY_TEST_OP_TEST:
-		return queryAtomicPropertyTest(fdt, offset, attr->test);
+		return !queryPropertyTest(fdt, offset, attr->child);
+	case PROPERTY_TEST_OP_ATOMIC:
+		return queryAtomicPropertyTest(fdt, offset, attr->atomic);
 	default:
 		return false;
 	}

@@ -56,7 +56,7 @@ enum PROPERTY_TEST_OP {
 	/** Negation of a test */
 	PROPERTY_TEST_OP_NEG,
 	/** An atomic test (-> leaf of AST) */
-	PROPERTY_TEST_OP_TEST
+	PROPERTY_TEST_OP_ATOMIC
 };
 
 /** AST: Property Test (i.e. logical conjunction of (atomic) property tests) */
@@ -71,9 +71,9 @@ struct PropertyTest {
 			struct PropertyTest * right;
 		};
 		/** for unary operators: child */
-		struct PropertyTest * neg;
+		struct PropertyTest * child;
 		/** for atomic tests: leaf */
-		struct AtomicPropertyTest * test;
+		struct AtomicPropertyTest * atomic;
 	};
 };
 
@@ -106,6 +106,14 @@ void yyerror(struct NodeTest ** parsedExpression, const char * expr,
 
 struct NodeTest * newNodeTest(enum NODE_TEST_TYPE type, char * name,
 	struct PropertyTest * properties, struct NodeTest * subExpr);
+
+struct PropertyTest * newPropertyTestBinary(enum PROPERTY_TEST_OP op,
+	struct PropertyTest * left, struct PropertyTest * right);
+
+struct PropertyTest * newPropertyTestUnary(enum PROPERTY_TEST_OP op,
+	struct PropertyTest * child);
+
+struct PropertyTest * newPropertyTestAtomic(struct AtomicPropertyTest * child);
 
 struct AtomicPropertyTest * newAtomicPropertyTestExist(char * property);
 

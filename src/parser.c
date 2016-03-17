@@ -100,32 +100,32 @@ void yyerror(struct NodeTest ** parsedExpression, const char * expr,
 	}
 
 	/* print generated message of the parser */
-	offset += printf("%s at ", s);
+	offset += fprintf(stderr, "%s at ", s);
 	if (truncate_l) {
 		/* if truncated on the left : print indicator */
 		offset += 1;
-		printf("…");
+		fprintf(stderr, "…");
 	}
 	/* print the expression (i.e. it's erroneous substring) */
-	printf("%.*s", (int)printLen, err);
+	fprintf(stderr, "%.*s", (int)printLen, err);
 	if (truncate_r) /* if truncated on the right: print indicator */
-		printf("…");
-	printf("\n");
+		fprintf(stderr, "…");
+	fprintf(stderr, "\n");
 
 	/* print spaces until we reach the erroneous substring */
 	const char spc[10] = { [0 ... 9] = ' ' };
 	for (; offset >= 10; offset -= 10)
-		fwrite(spc, sizeof *spc, sizeof spc, stdout);
+		fwrite(spc, sizeof *spc, sizeof spc, stderr);
 	if (offset)
-		fwrite(spc, sizeof *spc, offset, stdout);
+		fwrite(spc, sizeof *spc, offset, stderr);
 
 	/* print circumflexes below the erroneous substring */
 	const char mark[10] = { [0 ... 9] = '^' };
 	for (; errlen >= 10; errlen -= 10)
-		fwrite(mark, sizeof *mark, sizeof mark, stdout);
+		fwrite(mark, sizeof *mark, sizeof mark, stderr);
 	if (errlen)
-		fwrite(mark, sizeof *mark, errlen, stdout);
-	puts("");
+		fwrite(mark, sizeof *mark, errlen, stderr);
+	fputs("", stderr);
 }
 
 /** Instantiate a new node test.
@@ -138,29 +138,73 @@ void yyerror(struct NodeTest ** parsedExpression, const char * expr,
 struct NodeTest * newNodeTest(enum NODE_TEST_TYPE type, char * name,
 	struct PropertyTest * properties, struct NodeTest * subExpr)
 {
-	struct NodeTest * expr = malloc(sizeof *expr);
-	assert(expr);
-	expr->type = type;
-	expr->name = name;
-	expr->properties = properties;
-	expr->subExpr = subExpr;
-	return expr;
+	struct NodeTest * test = malloc(sizeof *test);
+	assert(test);
+	test->type = type;
+	test->name = name;
+	test->properties = properties;
+	test->subExpr = subExpr;
+	return test;
 }
 
-/** Instantiate a new atomic property existence test
+/** Instantiate a new binary property test.
+ * \param op operator
+ * \param left left child
+ * \param right child
+ */
+struct PropertyTest * newPropertyTestBinary(enum PROPERTY_TEST_OP op,
+	struct PropertyTest * left, struct PropertyTest * right)
+{
+	struct PropertyTest * test = malloc(sizeof *test);
+	assert(test);
+	test->type = op;
+	test->left = left;
+	test->right = right;
+	return test;
+}
+
+/** Instantiate a new unary property test.
+ * \param op operator
+ * \param child sub test
+ */
+struct PropertyTest * newPropertyTestUnary(enum PROPERTY_TEST_OP op,
+	struct PropertyTest * child)
+{
+	struct PropertyTest * test = malloc(sizeof *test);
+	assert(test);
+	test->type = op;
+	test->child = child;
+	return test;
+}
+
+/** Instantiate a new atomic property test.
+ * \param op operator
+ * \param left left child
+ * \param right child
+ */
+struct PropertyTest * newPropertyTestAtomic(struct AtomicPropertyTest * child)
+{
+	struct PropertyTest * test = malloc(sizeof *test);
+	assert(test);
+	test->type = PROPERTY_TEST_OP_ATOMIC;
+	test->atomic = child;
+	return test;
+}
+
+/** Instantiate a new atomic property existence atomic
  * \param property property name
  * \return property test
  */
 struct AtomicPropertyTest * newAtomicPropertyTestExist(char * property)
 {
-	struct AtomicPropertyTest * expr = malloc(sizeof *expr);
-	assert(expr);
-	expr->type = ATOMIC_PROPERTY_TEST_TYPE_EXIST;
-	expr->property = property;
-	return expr;
+	struct AtomicPropertyTest * test = malloc(sizeof *test);
+	assert(test);
+	test->type = ATOMIC_PROPERTY_TEST_TYPE_EXIST;
+	test->property = property;
+	return test;
 }
 
-/** Instantiate a new atomic property integer test
+/** Instantiate a new atomic property integer atomic
  * \param op comparison operator
  * \param property property name
  * \param integer integer to test against
@@ -169,16 +213,16 @@ struct AtomicPropertyTest * newAtomicPropertyTestExist(char * property)
 struct AtomicPropertyTest * newAtomicPropertyTestInteger(
 	enum ATOMIC_PROPERTY_TEST_OP op, char * property, int integer)
 {
-	struct AtomicPropertyTest * expr = malloc(sizeof *expr);
-	assert(expr);
-	expr->type = ATOMIC_PROPERTY_TEST_TYPE_INT;
-	expr->op = op;
-	expr->property = property;
-	expr->integer = integer;
-	return expr;
+	struct AtomicPropertyTest * test = malloc(sizeof *test);
+	assert(test);
+	test->type = ATOMIC_PROPERTY_TEST_TYPE_INT;
+	test->op = op;
+	test->property = property;
+	test->integer = integer;
+	return test;
 }
 
-/** Instantiate a new atomic property string test
+/** Instantiate a new atomic property string atomic
  * \param op comparison operator
  * \param property property name
  * \param string string to test against, ownership is transferred
@@ -187,17 +231,17 @@ struct AtomicPropertyTest * newAtomicPropertyTestInteger(
 struct AtomicPropertyTest * newAtomicPropertyTestString(
 	enum ATOMIC_PROPERTY_TEST_OP op, char * property, char * string)
 {
-	struct AtomicPropertyTest * expr = malloc(sizeof *expr);
-	assert(expr);
-	expr->type = ATOMIC_PROPERTY_TEST_TYPE_STR;
-	expr->op = op;
-	expr->property = property;
-	expr->string = string;
-	return expr;
+	struct AtomicPropertyTest * test = malloc(sizeof *test);
+	assert(test);
+	test->type = ATOMIC_PROPERTY_TEST_TYPE_STR;
+	test->op = op;
+	test->property = property;
+	test->string = string;
+	return test;
 }
 
-/** Free an atomic property test.
- * \param test atomic property test to be freed. May be NULL
+/** Free an atomic property atomic.
+ * \param atomic atomic property test to be freed. May be NULL
  */
 void freeAtomicPropertyTest(struct AtomicPropertyTest * test)
 {
@@ -211,8 +255,8 @@ void freeAtomicPropertyTest(struct AtomicPropertyTest * test)
 	free(test);
 }
 
-/** Free a property test.
- * \param test property test to be freed. May be NULL
+/** Free a property atomic.
+ * \param atomic property atomic to be freed. May be NULL
  */
 void freePropertyTest(struct PropertyTest * test)
 {
@@ -234,14 +278,14 @@ void freePropertyTest(struct PropertyTest * test)
 		break;
 	}
 	case PROPERTY_TEST_OP_NEG: {
-		struct PropertyTest * subTest = test->neg;
+		struct PropertyTest * subTest = test->child;
 		free(test);
 		/* allow tail recursion */
 		freePropertyTest(subTest);
 	}
 		break;
-	case PROPERTY_TEST_OP_TEST: {
-		struct AtomicPropertyTest * subTest = test->test;
+	case PROPERTY_TEST_OP_ATOMIC: {
+		struct AtomicPropertyTest * subTest = test->atomic;
 		free(subTest);
 		/* allow tail recursion */
 		freeAtomicPropertyTest(subTest);
@@ -250,8 +294,8 @@ void freePropertyTest(struct PropertyTest * test)
 	}
 }
 
-/** Free a node test.
- * \param test node test to be freed. May be NULL
+/** Free a node atomic.
+ * \param atomic node atomic to be freed. May be NULL
  */
 void freeNodeTest(struct NodeTest * test)
 {
@@ -277,7 +321,7 @@ static const char * testOperators[] = {
 	[ATOMIC_PROPERTY_TEST_OP_CONTAINS] = "~="
 };
 
-/** Dump an atomic property test to stdout.
+/** Dump an atomic property atomic to stdout.
  * \param test property test to be printed
  */
 static void printAtomicPropertyTest(const struct AtomicPropertyTest * test)
@@ -298,8 +342,8 @@ static void printAtomicPropertyTest(const struct AtomicPropertyTest * test)
 	}
 }
 
-/** Dump a property test to stdout.
- * \param test property test to be printed
+/** Dump a property atomic to stdout.
+ * \param atomic property test to be printed
  */
 static void printPropertyTest(const struct PropertyTest * test)
 {
@@ -320,17 +364,17 @@ static void printPropertyTest(const struct PropertyTest * test)
 		break;
 	case PROPERTY_TEST_OP_NEG:
 		printf("!(");
-		printPropertyTest(test->neg);
+		printPropertyTest(test->child);
 		printf(")");
 		break;
-	case PROPERTY_TEST_OP_TEST:
-		printAtomicPropertyTest(test->test);
+	case PROPERTY_TEST_OP_ATOMIC:
+		printAtomicPropertyTest(test->atomic);
 		break;
 	}
 }
 
-/** Dump a node test to stdout.
- * \param test node test to be printed
+/** Dump a node atomic to stdout.
+ * \param atomic node test to be printed
  */
 void printNodeTest(const struct NodeTest * test)
 {
