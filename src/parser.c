@@ -239,11 +239,9 @@ void printNavExpr(const struct NavExpr * expr)
 	if (expr->type != NAV_EXPR_TYPE_ROOT)
 		printf("/");
 
-	if (expr->type == NAV_EXPR_TYPE_DESCEND) {
-		printf("");
-	} else if (expr->name) {
+	if (expr->type != NAV_EXPR_TYPE_DESCEND && expr->name)
 		printf("%s", expr->name);
-	}
+
 	if (expr->attributes) {
 		printf("[");
 		printAttributes(expr->attributes);
