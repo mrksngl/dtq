@@ -102,7 +102,7 @@ struct NodeTest {
 void lexError(const char * yytext);
 
 void yyerror(struct NodeTest ** parsedExpression, const char * expr,
-	const char * s);
+	const char * err);
 
 struct NodeTest * newNodeTest(enum NODE_TEST_TYPE type, char * name,
 	struct PropertyTest * properties, struct NodeTest * subExpr);

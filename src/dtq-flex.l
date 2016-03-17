@@ -40,6 +40,6 @@ static int yycolumn = 1;
 
 [ \t]             ;
 
-.                 lexError(yytext);
+.                 { lexError(yytext); return ERR; }
 
 %%

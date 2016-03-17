@@ -30,6 +30,7 @@ extern int yylex();
 %token <number> NUMBER
 %token <text> IDENT STRING
 %token LE GE NE CONTAINS
+%token ERR
 
 /* destructors, in case of failure */
 %destructor { freeNodeTest($$); } <node>
