@@ -96,7 +96,7 @@ struct NodeTest {
 	/** optional: node properties */
 	struct PropertyTest * properties;
 	/** optional: child node test. Required for type NODE_TEST_TYPE_DESCEND */
-	struct NodeTest * subExpr;
+	struct NodeTest * subTest;
 };
 
 void lexError(const char * yytext);

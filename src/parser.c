@@ -142,7 +142,7 @@ struct NodeTest * newNodeTest(enum NODE_TEST_TYPE type, char * name,
 	test->type = type;
 	test->name = name;
 	test->properties = properties;
-	test->subExpr = subExpr;
+	test->subTest = subExpr;
 	return test;
 }
 
@@ -303,7 +303,7 @@ void freeNodeTest(struct NodeTest * test)
 
 	free(test->name);
 	freePropertyTest(test->properties);
-	struct NodeTest * next = test->subExpr;
+	struct NodeTest * next = test->subTest;
 	free(test);
 	/* allow tail recursion */
 	freeNodeTest(next);
@@ -389,6 +389,6 @@ void printNodeTest(const struct NodeTest * test)
 		printf("]");
 	}
 
-	if (test->subExpr)
-		printNodeTest(test->subExpr);
+	if (test->subTest)
+		printNodeTest(test->subTest);
 }

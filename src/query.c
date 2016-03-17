@@ -136,28 +136,52 @@ int fdt_next_subnode(const void *fdt, int offset)
 }
 #endif
 
+/** Test a node which is already a candidate for the overall test or for
+ * further recursion.
+ * \param fdt flattened device tree
+ * \param offset offset to the current node
+ * \param depth depth of the current node
+ * \param test current node test
+ */
 static void queryNode(const void * fdt, int offset, int depth,
 	const struct NodeTest * test)
 {
+	/* test properties if there are some */
 	if (test->properties && !queryPropertyTest(fdt, offset, test->properties))
 		return;
-	if (test->subExpr)
-		query(fdt, offset, depth, test->subExpr);
-	else
+	if (test->subTest) {
+		/* not a leaf in the test: recurse */
+		query(fdt, offset, depth, test->subTest);
+	} else {
+		/* leaf of the test: action */
 		printPath(fdt, offset);
+	}
 }
 
+/** Query a fdt: for each node which satisfies the node test, do an action
+ * \param fdt flattened device tree
+ * \param offset offset to the current node
+ * \param depth current node depth
+ * \param test current node test
+ */
 static void query(const void * fdt, int offset, int depth,
 	const struct NodeTest * test)
 {
 	switch (test->type) {
 	case NODE_TEST_TYPE_ROOT:
+		/* root node test is satisfied if and only if the offset points to
+		 * the root node
+		 */
 		if (offset == 0)
 			queryNode(fdt, offset, depth + 1, test);
 		break;
 	case NODE_TEST_TYPE_NODE:
+		/* iterate over all direct sub nodes of the given node */
 		offset = fdt_first_subnode(fdt, offset);
 		while (offset != -FDT_ERR_NOTFOUND) {
+			/* if the current node has a matching name, test the properties
+			 * and maybe recurse
+			 */
 			if (!test->name ||
 				!strcmp(test->name, fdt_get_name(fdt, offset, NULL)))
 				queryNode(fdt, offset, depth + 1, test);
@@ -165,12 +189,15 @@ static void query(const void * fdt, int offset, int depth,
 		}
 		break;
 	case NODE_TEST_TYPE_DESCEND: {
-		test = test->subExpr;
+		/* iterate over ALL sub nodes */
+		test = test->subTest; /* the test is only marked to descend and
+			empty otherwise -> descend to the sub test */
 		int cdepth = 0;
 		while (true) {
 			offset = fdt_next_node(fdt, offset, &cdepth);
 			if (offset < 0 || cdepth < 1)
 				return;
+
 			queryNode(fdt, offset, depth + cdepth, test);
 		}
 	}
@@ -178,15 +205,26 @@ static void query(const void * fdt, int offset, int depth,
 	}
 }
 
-void queryFdt(const void * fdt, const struct NodeTest * expr)
+/** Query a fdt: for each node which satisfies the node test, do an action
+ * \param fdt flattened device tree
+ * \param test node test
+ */
+void queryFdt(const void * fdt, const struct NodeTest * test)
 {
-	query(fdt, 0, 0, expr);
+	/* start at root node and depth 0 */
+	query(fdt, 0, 0, test);
 }
 
+/** Print a path of a node in the device tree.
+ *  This is the only action right now.
+ * \param fdt flattened device tree
+ * \param offset offset to node
+ */
 static void printPath(const void * fdt, int offset)
 {
 	char path[PATH_MAX];
 	fdt_get_path(fdt, offset, path, sizeof path);
-	printf("Node: %s @ %d: %s\n", fdt_get_name(fdt, offset, NULL), offset, path);
+	printf("Node: %s @ %d: %s\n", fdt_get_name(fdt, offset, NULL), offset,
+		path);
 }
 
