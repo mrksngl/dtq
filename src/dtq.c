@@ -23,13 +23,13 @@ int main(int argc, char * argv[])
 		error(EXIT_FAILURE, 0, "Usage: %s <filename> <query>", argv[0]);
 
 	/* parse expression */
-	struct NodeTest * expr = parseNodeTestExpr(argv[2]);
+	struct NodeTest * query = parseNodeTestExpr(argv[2]);
 
-	if (!expr)
+	if (!query)
 		return EXIT_FAILURE;
 
 	/* debugging: print expression from AST */
-	printNodeTest(expr);
+	printNodeTest(query);
 	puts("");
 
 	/* open device tree */
@@ -56,10 +56,10 @@ int main(int argc, char * argv[])
 		error(EXIT_FAILURE, 0, "FDT invalid: size mismatch");
 
 	/* do the query */
-	queryFdt(fdt, expr);
+	queryFdt(fdt, query);
 
 	/* cleanup */
-	freeNodeTest(expr);
+	freeNodeTest(query);
 
 	munmap(fdt, st.st_size);
 
