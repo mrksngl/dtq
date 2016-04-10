@@ -20,8 +20,11 @@
 
 int main(int argc, char * argv[])
 {
-	if (argc != 3)
-		error(EXIT_FAILURE, 0, "Usage: %s <filename> <query>", argv[0]);
+	if (argc != 4)
+		error(EXIT_FAILURE, 0, "Usage: %s <filename> <query> <property>",
+			argv[0]);
+
+	const char * property = argv[3];
 
 	/* parse expression */
 	struct NodeTest * query = parseNodeTestExpr(argv[2]);
@@ -30,8 +33,8 @@ int main(int argc, char * argv[])
 		return EXIT_FAILURE;
 
 	/* debugging: print expression from AST */
-	printNodeTest(query);
-	puts("");
+	/*printNodeTest(query);
+	puts("");*/
 
 	/* open device tree */
 	const char * filename = argv[1];
@@ -62,14 +65,13 @@ int main(int argc, char * argv[])
 	if (!udt)
 		return EXIT_FAILURE;
 
-	/*printDeviceTree(udt);
-	freeDeviceTree(udt);*/
-
 	/* do the query */
-	queryDt(udt, query);
+	queryDt(udt, query, property);
 
 	/* cleanup */
 	freeNodeTest(query);
+
+	freeDeviceTree(udt);
 
 	return EXIT_SUCCESS;
 }

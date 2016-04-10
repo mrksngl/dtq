@@ -5,6 +5,7 @@
 
 #include <parser.h>
 #include <stdbool.h>
+#include <ctype.h>
 #include <libfdt.h>
 #include <stdint.h>
 #include <limits.h>
@@ -13,7 +14,9 @@
 #include <udt.h>
 
 static void printPath(const struct Node * node);
-static void query(const struct Node * node, const struct NodeTest * test);
+static void query(const struct Node * node, const struct NodeTest * test,
+	const char * property);
+static void printProperty(const struct Node * node, const char * property);
 
 static bool containsString(const struct Property * prop, const char * str)
 {
@@ -41,13 +44,21 @@ static bool containsInt(const struct Property * prop, uint32_t i)
 	return false;
 }
 
-static bool queryAtomicPropertyTest(const struct Node * node,
-	const struct AtomicPropertyTest * test)
+static const struct Property * getPropertyByName(const struct Node * node,
+	const char * name)
 {
 	const struct Property * prop;
 	for (prop = node->properties; prop; prop = prop->nextProperty)
-		if (!strcmp(test->property, prop->name))
-			break;
+		if (!strcmp(name, prop->name))
+			return prop;
+	return NULL;
+}
+
+static bool queryAtomicPropertyTest(const struct Node * node,
+	const struct AtomicPropertyTest * test)
+{
+	const struct Property * prop = getPropertyByName(node, test->property);
+
 	if (!prop)
 		return false;
 
@@ -138,12 +149,13 @@ static bool testNode(const struct Node * node, const struct NodeTest * test)
  * \param node root node of the test: all its successor nodes will be queried
  * \param test test to apply to the nodes
  */
-static void queryDescend(const struct Node * node, const struct NodeTest * test)
+static void queryDescend(const struct Node * node, const struct NodeTest * test,
+	const char * property)
 {
 	const struct Node * child;
 	for (child = node->children; child; child = child->sibling) {
-		query(child, test);
-		queryDescend(child, test);
+		query(child, test, property);
+		queryDescend(child, test, property);
 	}
 }
 
@@ -151,7 +163,8 @@ static void queryDescend(const struct Node * node, const struct NodeTest * test)
  * \param node node to be tested
  * \param test node test
  */
-static void query(const struct Node * node, const struct NodeTest * test)
+static void query(const struct Node * node, const struct NodeTest * test,
+	const char * property)
 {
 	if (!testNode(node, test))
 		return;
@@ -159,18 +172,18 @@ static void query(const struct Node * node, const struct NodeTest * test)
 	/* test passed, consider children */
 	if (!test->subTest) {
 		/* leaf of the test: action */
-		printPath(node);
+		printProperty(node, property);
 		return;
 	}
 
 	/* descend */
 	const struct NodeTest * subTest = test->subTest;
 	if (subTest->type == NODE_TEST_TYPE_DESCEND) {
-		queryDescend(node, subTest->subTest);
+		queryDescend(node, subTest->subTest, property);
 	} else {
 		struct Node * child;
 		for (child = node->children; child; child = child->sibling)
-			query(child, subTest);
+			query(child, subTest, property);
 	}
 }
 
@@ -178,10 +191,49 @@ static void query(const struct Node * node, const struct NodeTest * test)
  * \param dt unflattened device tree
  * \param test node test
  */
-void queryDt(const struct DeviceTree * dt, const struct NodeTest * test)
+void queryDt(const struct DeviceTree * dt, const struct NodeTest * test,
+	const char * property)
 {
 	/* start at root node */
-	query(dt->root, test);
+	query(dt->root, test, property);
+}
+
+static void printProperty(const struct Node * node, const char * property)
+{
+	const struct Property * prop = getPropertyByName(node, property);
+	if (!prop)
+		return;
+	if (prop->val[prop->len - 1] == '\0') {
+		size_t i;
+		for (i = 0; i < prop->len; ++i) {
+			char c = prop->val[i];
+			if (!isprint(c) && c != '\0')
+				break;
+		}
+		if (i == prop->len) {
+			size_t offset = 0;
+			while (offset != prop->len) {
+				size_t len = printf("\"%s\"", prop->val + offset) - 1;
+				offset += len;
+				if (offset != prop->len)
+					putchar(' ');
+			}
+			putchar('\n');
+			return;
+		}
+	}
+	if (prop->len % sizeof(fdt32_t) == 0) {
+		size_t offset = 0;
+		while (offset != prop->len) {
+			printf("0x%x", fdt32_to_cpu(*(fdt32_t*)(prop->val + offset)));
+			offset += sizeof(fdt32_t);
+			if (offset != prop->len)
+				putchar(' ');
+		}
+		putchar('\n');
+	} else {
+		printf("??");
+	}
 }
 
 static void printPathName(const struct Node * node)

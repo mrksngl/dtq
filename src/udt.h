@@ -12,7 +12,7 @@ enum PROPERTY_TYPE {
 struct Property {
 	enum PROPERTY_TYPE type;
 	char * name;
-	void * val;
+	char * val;
 	int len;
 	struct Property * nextProperty;
 };
