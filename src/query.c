@@ -10,14 +10,15 @@
 #include <limits.h>
 #include <stdio.h>
 #include <assert.h>
+#include <udt.h>
 
-static void printPath(const void * fdt, int offset);
-static void query(const void * fdt, int offset, int depth,
-	const struct NodeTest * test);
+static void printPath(const struct Node * node);
+static void query(const struct Node * node, const struct NodeTest * test);
 
-static bool containsString(const char * data, int len, const char * str)
+static bool containsString(const struct Property * prop, const char * str)
 {
-	const char * end = data + len;
+	const char * data = prop->val;
+	const char * end = data + prop->len;
 
 	do {
 		if (!strcmp(data, str))
@@ -27,9 +28,10 @@ static bool containsString(const char * data, int len, const char * str)
 	return false;
 }
 
-static bool containsInt(const char * data, int len, uint32_t i)
+static bool containsInt(const struct Property * prop, uint32_t i)
 {
-	const char * end = data + len;
+	const char * data = prop->val;
+	const char * end = data + prop->len;
 
 	while (data + 3 < end) {
 		if (fdt32_to_cpu(*(fdt32_t*)data) == i)
@@ -39,12 +41,13 @@ static bool containsInt(const char * data, int len, uint32_t i)
 	return false;
 }
 
-static bool queryAtomicPropertyTest(const void * fdt, int offset,
+static bool queryAtomicPropertyTest(const struct Node * node,
 	const struct AtomicPropertyTest * test)
 {
-	int len;
-	const struct fdt_property * prop = fdt_get_property(fdt, offset,
-		test->property, &len);
+	const struct Property * prop;
+	for (prop = node->properties; prop; prop = prop->nextProperty)
+		if (!strcmp(test->property, prop->name))
+			break;
 	if (!prop)
 		return false;
 
@@ -53,11 +56,11 @@ static bool queryAtomicPropertyTest(const void * fdt, int offset,
 		return true;
 	case ATOMIC_PROPERTY_TEST_TYPE_INT:
 		if (test->op == ATOMIC_PROPERTY_TEST_OP_CONTAINS) {
-			return containsInt(prop->data, len, test->integer);
+			return containsInt(prop, test->integer);
 		} else {
-			if (len != 4)
+			if (prop->len != 4)
 				return false;
-			uint32_t i = fdt32_to_cpu(*(fdt32_t*)prop->data);
+			uint32_t i = fdt32_to_cpu(*(fdt32_t*)prop->val);
 
 			switch (test->op) {
 			case ATOMIC_PROPERTY_TEST_OP_EQ: return i == test->integer;
@@ -72,10 +75,10 @@ static bool queryAtomicPropertyTest(const void * fdt, int offset,
 		break;
 	case ATOMIC_PROPERTY_TEST_TYPE_STR:
 		if (test->op == ATOMIC_PROPERTY_TEST_OP_CONTAINS) {
-			return containsString(prop->data, len, test->string);
+			return containsString(prop, test->string);
 		} else {
-			bool res = len == strlen(test->string) + 1;
-			res = res && !memcmp(test->string, prop->data, len);
+			bool res = prop->len == strlen(test->string) + 1;
+			res = res && !memcmp(test->string, prop->val, prop->len);
 			return !(res ^ (test->op == ATOMIC_PROPERTY_TEST_OP_EQ));
 		}
 		break;
@@ -85,134 +88,108 @@ static bool queryAtomicPropertyTest(const void * fdt, int offset,
 	return false;
 }
 
-static bool queryPropertyTest(const void * fdt, int offset,
-	const struct PropertyTest * attr)
+static bool queryPropertyTest(const struct Node * node,
+	const struct PropertyTest * test)
 {
-	switch (attr->type) {
+	switch (test->type) {
 	case PROPERTY_TEST_OP_AND:
-		return queryPropertyTest(fdt, offset, attr->left) &&
-			queryPropertyTest(fdt, offset, attr->right);
+		return queryPropertyTest(node, test->left) &&
+			queryPropertyTest(node, test->right);
 	case PROPERTY_TEST_OP_OR:
-		return queryPropertyTest(fdt, offset, attr->left) ||
-			queryPropertyTest(fdt, offset, attr->right);
+		return queryPropertyTest(node, test->left) ||
+			queryPropertyTest(node, test->right);
 	case PROPERTY_TEST_OP_NEG:
-		return !queryPropertyTest(fdt, offset, attr->child);
+		return !queryPropertyTest(node, test->child);
 	case PROPERTY_TEST_OP_ATOMIC:
-		return queryAtomicPropertyTest(fdt, offset, attr->atomic);
+		return queryAtomicPropertyTest(node, test->atomic);
 	default:
 		return false;
 	}
 }
 
-#ifndef HAVE_FDT_FIRST_SUBNODE
-int fdt_first_subnode(const void *fdt, int offset)
-{
-	int depth = 0;
-
-	offset = fdt_next_node(fdt, offset, &depth);
-	if (offset < 0 || depth != 1)
-		return -FDT_ERR_NOTFOUND;
-
-	return offset;
-}
-#endif
-
-#ifndef HAVE_FDT_NEXT_SUBNODE
-int fdt_next_subnode(const void *fdt, int offset)
-{
-	int depth = 1;
-
-	/*
-	 * With respect to the parent, the depth of the next subnode will be
-	 * the same as the last.
-	 */
-	do {
-		offset = fdt_next_node(fdt, offset, &depth);
-		if (offset < 0 || depth < 1)
-			return -FDT_ERR_NOTFOUND;
-	} while (depth > 1);
-
-	return offset;
-}
-#endif
-
-/** Test a node which is already a candidate for the overall test or for
- * further recursion.
- * \param fdt flattened device tree
- * \param offset offset to the current node
- * \param depth depth of the current node
- * \param test current node test
+/** Test if a node matches a query
+ * \param node node to be tested
+ * \param test test to be queried on the node
+ * \return true if node matches the test
  */
-static void queryNode(const void * fdt, int offset, int depth,
-	const struct NodeTest * test)
-{
-	/* test properties if there are some */
-	if (test->properties && !queryPropertyTest(fdt, offset, test->properties))
-		return;
-	if (test->subTest) {
-		/* not a leaf in the test: recurse */
-		query(fdt, offset, depth, test->subTest);
-	} else {
-		/* leaf of the test: action */
-		printPath(fdt, offset);
-	}
-}
-
-/** Query a fdt: for each node which satisfies the node test, do an action
- * \param fdt flattened device tree
- * \param offset offset to the current node
- * \param depth current node depth
- * \param test current node test
- */
-static void query(const void * fdt, int offset, int depth,
-	const struct NodeTest * test)
+static bool testNode(const struct Node * node, const struct NodeTest * test)
 {
 	switch (test->type) {
 	case NODE_TEST_TYPE_ROOT:
-		/* root node test is satisfied if and only if the offset points to
-		 * the root node
-		 */
-		if (offset == 0)
-			queryNode(fdt, offset, depth + 1, test);
+		if (node->parent != NULL)
+			return false;
 		break;
 	case NODE_TEST_TYPE_NODE:
-		/* iterate over all direct sub nodes of the given node */
-		offset = fdt_first_subnode(fdt, offset);
-		while (offset != -FDT_ERR_NOTFOUND) {
-			/* if the current node has a matching name, test the properties
-			 * and maybe recurse
-			 */
-			if (!test->name ||
-				!strcmp(test->name, fdt_get_name(fdt, offset, NULL)))
-				queryNode(fdt, offset, depth + 1, test);
-			offset = fdt_next_subnode(fdt, offset);
-		}
+		if (test->name && strcmp(test->name, node->name))
+			return false;
 		break;
-	case NODE_TEST_TYPE_DESCEND: {
-		/* iterate over ALL sub nodes */
-		test = test->subTest; /* the test is only marked to descend and
-			empty otherwise -> descend to the sub test */
-		int cdepth = 0;
-		while (true) {
-			offset = fdt_next_node(fdt, offset, &cdepth);
-			if (offset < 0 || cdepth < 1)
-				return;
-
-			queryNode(fdt, offset, depth + cdepth, test);
-		}
+	case NODE_TEST_TYPE_DESCEND:
+		assert(false);
+		break;
 	}
-		break;
+
+	if (test->properties)
+		return queryPropertyTest(node, test->properties);
+	else
+		return true;
+}
+
+/** Descend on a query: test all successor nodes
+ * \param node root node of the test: all its successor nodes will be queried
+ * \param test test to apply to the nodes
+ */
+static void queryDescend(const struct Node * node, const struct NodeTest * test)
+{
+	const struct Node * child;
+	for (child = node->children; child; child = child->sibling) {
+		query(child, test);
+		queryDescend(child, test);
 	}
 }
 
-/** Query a fdt: for each node which satisfies the node test, do an action
- * \param fdt flattened device tree
+/** Query a dt: test a node, execute action, recurse or do nothing
+ * \param node node to be tested
  * \param test node test
  */
-void queryFdt(const void * fdt, const struct NodeTest * test)
+static void query(const struct Node * node, const struct NodeTest * test)
 {
-	/* start at root node and depth 0 */
-	query(fdt, 0, 0, test);
+	if (!testNode(node, test))
+		return;
+
+	/* test passed, consider children */
+	if (!test->subTest) {
+		/* leaf of the test: action */
+		printPath(node);
+		return;
+	}
+
+	/* descend */
+	const struct NodeTest * subTest = test->subTest;
+	if (subTest->type == NODE_TEST_TYPE_DESCEND) {
+		queryDescend(node, subTest->subTest);
+	} else {
+		struct Node * child;
+		for (child = node->children; child; child = child->sibling)
+			query(child, subTest);
+	}
+}
+
+/** Query a dt: for each node which satisfies the node test, execute an action
+ * \param dt unflattened device tree
+ * \param test node test
+ */
+void queryDt(const struct DeviceTree * dt, const struct NodeTest * test)
+{
+	/* start at root node */
+	query(dt->root, test);
+}
+
+static void printPathName(const struct Node * node)
+{
+	if (node->parent) {
+		printPathName(node->parent);
+		printf("/%s", node->name);
+	}
 }
 
 /** Print a path of a node in the device tree.
@@ -220,11 +197,10 @@ void queryFdt(const void * fdt, const struct NodeTest * test)
  * \param fdt flattened device tree
  * \param offset offset to node
  */
-static void printPath(const void * fdt, int offset)
+static void printPath(const struct Node * node)
 {
-	char path[PATH_MAX];
-	fdt_get_path(fdt, offset, path, sizeof path);
-	printf("Node: %s @ %d: %s\n", fdt_get_name(fdt, offset, NULL), offset,
-		path);
+	printf("Node: %s: ", node->name);
+	printPathName(node);
+	putchar('\n');
 }
 

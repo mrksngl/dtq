@@ -3,6 +3,6 @@
 
 #include <parser.h>
 
-void queryFdt(const void * fdt, const struct NodeTest * test);
+void queryDt(const void * fdt, const struct NodeTest * test);
 
 #endif

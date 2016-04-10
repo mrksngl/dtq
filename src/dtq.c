@@ -16,6 +16,7 @@
 
 #include <parser.h>
 #include <query.h>
+#include <udt.h>
 
 int main(int argc, char * argv[])
 {
@@ -55,13 +56,20 @@ int main(int argc, char * argv[])
 	if (fdt_totalsize(fdt) != st.st_size)
 		error(EXIT_FAILURE, 0, "FDT invalid: size mismatch");
 
+
+	struct DeviceTree * udt = unflattenDeviceTree(fdt);
+	munmap(fdt, st.st_size);
+	if (!udt)
+		return EXIT_FAILURE;
+
+	/*printDeviceTree(udt);
+	freeDeviceTree(udt);*/
+
 	/* do the query */
-	queryFdt(fdt, query);
+	queryDt(udt, query);
 
 	/* cleanup */
 	freeNodeTest(query);
-
-	munmap(fdt, st.st_size);
 
 	return EXIT_SUCCESS;
 }
