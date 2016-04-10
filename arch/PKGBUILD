@@ -1,0 +1,28 @@
+# Maintainer: Markus Engel
+pkgname=dtq
+pkgver=0.1.0
+pkgrel=1
+pkgdesc="DeviceTree Query tool"
+url="https://github.com/mrksngl/dtq"
+arch=('armv7h' 'i686' 'x86_64')
+license=('custom')
+depends_armv7h=(gcc-libs dtc-overlay)
+depends_i686=(glibc dtc-overlay)
+depends_x86_64=(glibc dtc-overlay)
+makedepends=(gcc binutils make)
+conflicts=()
+replaces=()
+source=("${pkgname}-${pkgver}.tar.gz")
+md5sums=('SKIP')
+
+build() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  ./configure --prefix=/usr
+  make
+}
+
+package() {
+  cd "${srcdir}/${pkgname}-${pkgver}"
+  make DESTDIR="${pkgdir}" install
+}
+
