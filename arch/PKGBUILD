@@ -1,6 +1,6 @@
 # Maintainer: Markus Engel
 pkgname=dtq
-pkgver=0.1.1
+pkgver=0.1.2
 pkgrel=1
 pkgdesc="DeviceTree Query tool"
 url="https://github.com/mrksngl/dtq"

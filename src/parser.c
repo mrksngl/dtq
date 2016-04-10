@@ -285,7 +285,7 @@ void freePropertyTest(struct PropertyTest * test)
 		break;
 	case PROPERTY_TEST_OP_ATOMIC: {
 		struct AtomicPropertyTest * subTest = test->atomic;
-		free(subTest);
+		free(test);
 		/* allow tail recursion */
 		freeAtomicPropertyTest(subTest);
 	}

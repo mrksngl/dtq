@@ -1,5 +1,5 @@
 dnl initialize autoconf
-AC_INIT(dtq, 0.1.1)
+AC_INIT(dtq, 0.1.2)
 
 AC_CONFIG_AUX_DIR([build-aux])
 AC_CONFIG_MACRO_DIR(m4)
