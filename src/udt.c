@@ -25,7 +25,6 @@ static void unflattenNode(struct Node ** ret, struct Node * parent,
 	node->parent = parent;
 	node->children = NULL;
 	node->sibling = NULL;
-	node->properties = NULL;
 
 	struct Property ** pprop = &node->properties;
 	int propoff = fdt_first_property_offset(fdt, *offset);
@@ -41,6 +40,7 @@ static void unflattenNode(struct Node ** ret, struct Node * parent,
 		pprop = &prop->nextProperty;
 		propoff = fdt_next_property_offset(fdt, propoff);
 	}
+	*pprop = NULL;
 
 	int mydepth = *depth;
 	*offset = fdt_next_node(fdt, *offset, depth);
@@ -61,7 +61,7 @@ struct DeviceTree * unflattenDeviceTree(const void * fdt)
 	assert(dt);
 	dt->boot_cpuid_phys = fdt_boot_cpuid_phys(fdt);
 	int offset = 0;
-	int depth;
+	int depth = 0;
 	unflattenNode(&dt->root, NULL, fdt, &offset, &depth);
 
 	return dt;
@@ -113,4 +113,5 @@ static void freeNode(struct Node * node)
 void freeDeviceTree(struct DeviceTree * tree)
 {
 	freeNode(tree->root);
+	free(tree);
 }
